@@ -1,0 +1,11 @@
+{
+  "name": "Text to Columns",
+  "id": "1020700094489447475",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": [
+    "figma",
+    "figjam"
+  ],
+  "ui": "ui.html"
+}
