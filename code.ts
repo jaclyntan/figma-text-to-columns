@@ -27,32 +27,47 @@ if (figma.editorType === 'figma') {
 
       //check if selection is a text node
       if (figma.currentPage.selection.length > 0 && elem.type === 'TEXT') {
-
-        const text = elem.characters;
+        //note: for some reason figma removes <br>'s when it returns a text node's characters. Will patch if this is updated in the future
+        var text = elem.characters;
         const splitIndex = Math.round(text.length / colCount);
         const textArray = [];
 
-        for (let i = 1; i <= colCount; i++) {
+        async function removeWeirdChars() {
+          // this function is for removing any weird invisible chars in the string that Figma returns
+          // if you encounter any other weird chars/zero width chars please submit an issue so I can update the regex
+          var re = new RegExp('\\u2028|\\u2029', 'g');
+          return text.replace(re, '');
+        }
+
+        removeWeirdChars().then(function (value) {
+
           //regex is used to capture the string without slicing words
           const pattern = '^(.|\\n|\\r){' + splitIndex + '}[^\\s]*';
-          var re = new RegExp(pattern, "g");
-          //since the string length will change dynamically with each iteration, we have to perform a series of checks on the first and last iteration
-          var string =  (i === 1) ? text.match(re)[0]
-                        : (i === colCount) ? result
-                        : result.match(re)[0]
+          var re = new RegExp(pattern, 'g');
+          if ( value.match(re) !== null ) {
+            for (let i = 1; i <= colCount; i++) {
 
+              // console.log(text.match(re))
+              var string = (i === 1) ? value.match(re)[0]
+                          : (i === colCount) ? result
+                          : result.match(re)[0]
 
-          if (string) {
-            // add string to our array while trimming any leading or trailing white space
-            textArray.push(string.trim());
+              if (string) {
+                // add string to our array while trimming any leading or trailing white space
+                textArray.push(string.trim());
 
-            //update the text to account for the current iteration
-            var newResult = result;
-            result = '';
-            result += (i !== 1) ? newResult.substring(string.length, text.length) : text.substring(string.length, text.length);
+                //update the text to account for the current iteration
+                var newResult = result;
+                result = '';
+                result += (i !== 1) ? newResult.substring(string.length, value.length) : value.substring(string.length, value.length);
+              }
+
+            }
+          } else {
+            figma.notify('❌ There may be invisible characters in your text. Please visit the plugin page / github for more info. ❌', { timeout: 3000 })
           }
 
-        }
+        })
 
 
         // create a frame for our columns then add autolayout magic
