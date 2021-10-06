@@ -42,7 +42,7 @@ if (figma.editorType === 'figma') {
         removeWeirdChars().then(function (value) {
           console.log(value);
           //regex is used to capture the string without slicing words
-          const pattern = '^(.|\\n|\\r){' + splitIndex + '}[^\\s]*';
+          const pattern = '(.|\\r|\\n){1,'+splitIndex+'}[^\s|\v]*.*';
           var re = new RegExp(pattern, 'g');
           if ( value.match(re) !== null ) {
             for (let i = 1; i <= colCount; i++) {
