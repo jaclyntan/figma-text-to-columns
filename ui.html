@@ -88,7 +88,7 @@
     box-sizing: border-box;
     font-family: 'Inter', sans-serif;
     margin: 0;
-    padding: 10px;
+    padding: 0;
   }
 
   /*  FONTS */
@@ -133,6 +133,7 @@
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+    margin-left: 15px;
   }
 
   .button--primary {
@@ -249,6 +250,67 @@
     opacity: 0.3;
   }
 
+  .radio {
+    align-items: center;
+    cursor: default;
+    display: flex;
+    height: var(--size-medium);
+    position: relative;
+    padding: 26px;
+    border-top: 1px solid var(--silver);
+  }
+
+  .radio__button {
+    opacity: 0;
+    width: 10px;
+    height: 10px;
+    margin: 0;
+    padding: 0;
+  }
+
+  .radio__button:checked+.radio__label:before {
+    background-image: url('data:image/svg+xml,%3Csvg width="6" height="6" viewBox="0 0 6 6" fill="none" xmlns="http://www.w3.org/2000/svg"%3E%3Crect width="6" height="6" rx="3" fill="black" fill-opacity="0.8"/%3E%3C/svg%3E%0A');
+    background-repeat: no-repeat;
+    background-position: 2px 2px;
+  }
+
+  .radio__button:disabled+.radio__label {
+    opacity: 0.3;
+  }
+
+  .radio__button:checked:disabled+.radio__label:before {
+    border: 1px solid var(--black);
+  }
+
+  .radio__label {
+    align-items: center;
+    color: var(--black8);
+    display: flex;
+    font-family: var(--font-stack);
+    font-size: var(--font-size-xsmall);
+    font-weight: var(--font-weight-normal);
+    line-height: var(--font-line-height);
+    letter-spacing: var(--font-letter-spacing-pos-xsmall);
+    margin-left: -16px;
+    padding: 0 var(--size-xsmall) 0 var(--size-small);
+    height: 100%;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  .radio__label:before {
+    border: 1px solid var(--black8);
+    border-radius: var(--border-radius-small);
+    content: '';
+    display: block;
+    width: 10px;
+    height: 10px;
+    margin: 2px 10px 0 -8px;
+    border-radius: 50%;
+  }
+
   .label {
     font-size: var(--font-size-xsmall);
     font-weight: var(--font-weight-normal);
@@ -273,49 +335,67 @@
     margin-bottom: 10px;
   }
 
-  .wrapper {
+  .wrapper .row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     grid-gap: 20px;
     align-items: flex-start;
+    padding: 10px;
   }
-
   .col {
     margin-bottom: 10px;
   }
+  .wrapper h2 {
+    padding:20px 15px 0;
+  }
 </style>
 
+<div class="content-wrapper">
+  <div class="wrapper">
+    <h2 class="label bold">Text to Columns</h2>
+    <div class="row">
+      <div class="col">
+        <label class="label">Column Count</label>
+        <input type="input" class="input__field" id="column-count" type="number" value="2">
+      </div>
 
-<h2 class="label bold">Text to Columns</h2>
-<div class="wrapper">
-  <div class="col">
-    <label class="label">Column Count</label>
-    <input type="input" class="input__field" id="column-count" type="number" value="2">
-  </div>
+      <div class="col">
+        <label class="label">Column Width</label>
+        <input type="input" class="input__field" id="column-width" type="number" value="350">
+      </div>
 
-  <div class="col">
-    <label class="label">Column Width</label>
-    <input type="input" class="input__field" id="column-width" type="number" value="350">
-  </div>
+      <div class="col">
+        <label class="label">Gutter</label>
+        <input type="input" class="input__field" id="column-gutter" type="number" value="50">
+      </div>
+    </div>
+    <!-- Radio button -->
+    <div class="radio">
+      <input id="radioButton1" type="radio" class="radio__button" value="paragraphs" name="priority" checked>
+      <label for="radioButton1" class="radio__label label">Prioritise Paragraphs</label>
+      <input id="radioButton2" type="radio" class="radio__button" value="evenness" name="priority">
+      <label for="radioButton2" class="radio__label label">Prioritise Even Split</label>
+    </div>
 
-  <div class="col">
-    <label class="label">Gutter</label>
-    <input type="input" class="input__field" id="column-gutter" type="number" value="50">
   </div>
+  <button id="create" class="button button--primary">Create columns</button>
 </div>
-<button id="create" class="button button--primary">Create columns</button>
+
 <script>
   document.getElementById('create').onclick = () => {
+    console.log(document.querySelector('input[name="priority"]:checked'))
     const columnCount = parseInt(document.getElementById('column-count').value);
     const columnWidth = parseInt(document.getElementById('column-width').value);
     const columnGutter = parseInt(document.getElementById('column-gutter').value);
+    const priority = document.querySelector('input[name="priority"]:checked').value;
 
     parent.postMessage({
       pluginMessage: {
         type: 'create-columns',
         columnCount: columnCount,
         columnWidth: columnWidth,
-        columnGutter: columnGutter
+        columnGutter: columnGutter,
+        priority: priority
       }
     }, '*')
   }

@@ -4,7 +4,7 @@ if (figma.editorType === 'figma') {
 
   figma.showUI(__html__, {
     width: 340,
-    height: 180
+    height: 240
   });
 
 
@@ -14,6 +14,7 @@ if (figma.editorType === 'figma') {
       const colCount = msg.columnCount;
       const colWidth = msg.columnWidth;
       const colGutter = msg.columnGutter;
+      const colPriority = msg.priority;
       const elem = figma.currentPage.selection[0];
 
       var textStyleId;
@@ -29,7 +30,6 @@ if (figma.editorType === 'figma') {
       if (figma.currentPage.selection.length > 0 && elem.type === 'TEXT') {
         //note: for some reason figma removes <br>'s when it returns a text node's characters. Will patch if this is updated in the future
         var text = elem.characters;
-        const splitIndex = Math.round(text.length / colCount);
         const textArray = [];
 
         async function removeWeirdChars() {
@@ -40,14 +40,23 @@ if (figma.editorType === 'figma') {
         }
 
         removeWeirdChars().then(function (value) {
+          
           console.log(value);
+
+          var linesRe = new RegExp('\\r', 'g');
+          const linesAndreturns = value.match(linesRe);
+          const splitIndex = Math.round((value.length + linesAndreturns.length) / colCount);
+
           //regex is used to capture the string without slicing words
-          const pattern = '(.|\\r|\\n){1,'+splitIndex+'}[^\s|\v]*.*';
+          const pattern =   (colPriority === 'paragraphs') ? '(.|\\n|\\r){1,' + splitIndex + '}[^\\s]*.*'
+                          : (colPriority === 'evenness') ? '(.|\\n|\\r){1,' + splitIndex + '}[^\\s]*'
+                          : '^(.|\\n|\\r){' + splitIndex + '}[^\\s]*';
+
           var re = new RegExp(pattern, 'g');
           if ( value.match(re) !== null ) {
             for (let i = 1; i <= colCount; i++) {
 
-              // console.log(text.match(re))
+              console.log(value.match(re))
               var string = (i === 1) ? value.match(re)[0]
                           : (i === colCount) ? result
                           : result.match(re)[0]
