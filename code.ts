@@ -41,7 +41,6 @@
 
         removeWeirdChars().then(function (value) {
 
-
           var linesRe = new RegExp('\\r', 'g');
           const linesAndreturns = value.match(linesRe);
           //for some reason this sometimes returns null. may look into later
@@ -84,16 +83,22 @@
 
         // create a frame for our columns then add autolayout magic
         const columns = figma.createFrame();
-
+        console.log(elem.x,elem.width)
         columns.layoutMode = "HORIZONTAL";
         columns.itemSpacing = colGutter;
         columns.clipsContent = false;
         // columns.resizeWithoutConstraints(300,300)
         columns.fills = [{ visible: false, type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
-        columns.x = elem.x + elem.width + 100;
-        columns.y = elem.y;
 
-        figma.currentPage.appendChild(columns);
+        if ( figma.editorType === 'figjam' ) {
+          columns.x = elem.x + elem.width + 100;
+          columns.y = elem.y;
+          figma.currentPage.appendChild(columns);
+        } else {
+          columns.x = 0;
+          columns.y = 0;
+          elem.parent.appendChild(columns);
+        }
 
         async function createTextbox() {
           //default font styles

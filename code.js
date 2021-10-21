@@ -74,14 +74,22 @@ figma.ui.onmessage = msg => {
             });
             // create a frame for our columns then add autolayout magic
             const columns = figma.createFrame();
+            console.log(elem.x, elem.width);
             columns.layoutMode = "HORIZONTAL";
             columns.itemSpacing = colGutter;
             columns.clipsContent = false;
             // columns.resizeWithoutConstraints(300,300)
             columns.fills = [{ visible: false, type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
-            columns.x = elem.x + elem.width + 100;
-            columns.y = elem.y;
-            figma.currentPage.appendChild(columns);
+            if (figma.editorType === 'figjam') {
+                columns.x = elem.x + elem.width + 100;
+                columns.y = elem.y;
+                figma.currentPage.appendChild(columns);
+            }
+            else {
+                columns.x = 0;
+                columns.y = 0;
+                elem.parent.appendChild(columns);
+            }
             function createTextbox() {
                 return __awaiter(this, void 0, void 0, function* () {
                     //default font styles
