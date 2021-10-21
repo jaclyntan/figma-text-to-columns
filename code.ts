@@ -1,6 +1,6 @@
 
 
-if (figma.editorType === 'figma') {
+// if (figma.editorType === 'figma' || figma.editorType === 'figjam') {
 
   figma.showUI(__html__, {
     width: 340,
@@ -40,12 +40,14 @@ if (figma.editorType === 'figma') {
         }
 
         removeWeirdChars().then(function (value) {
-          
-          console.log(value);
+
 
           var linesRe = new RegExp('\\r', 'g');
           const linesAndreturns = value.match(linesRe);
-          const splitIndex = Math.round((value.length + linesAndreturns.length) / colCount);
+          //for some reason this sometimes returns null. may look into later
+          const splitIndex =    linesAndreturns ?
+                                Math.round((value.length + linesAndreturns.length) / colCount)
+                              : Math.round(value.length / colCount);
 
           //regex is used to capture the string without slicing words
           const pattern =   (colPriority === 'paragraphs') ? '(.|\\n|\\r){1,' + splitIndex + '}[^\\s]*.*'
@@ -53,6 +55,7 @@ if (figma.editorType === 'figma') {
                           : '^(.|\\n|\\r){' + splitIndex + '}[^\\s]*';
 
           var re = new RegExp(pattern, 'g');
+
           if ( value.match(re) !== null ) {
             for (let i = 1; i <= colCount; i++) {
 
@@ -93,16 +96,21 @@ if (figma.editorType === 'figma') {
         figma.currentPage.appendChild(columns);
 
         async function createTextbox() {
-
+          //default font styles
           await figma.loadFontAsync({ family: "Roboto", style: "Regular" })
+          //for figjam
+          await figma.loadFontAsync({ family: "Inter", style: "Medium" })
 
           // finally, we can loop through our array we made earlier and create text nodes for each of them
           for (let i = 0; i < textArray.length; i++) {
+
             const textbox = figma.createText();
+
             textbox.characters = textArray[i];
             textbox.resize(colWidth, 500);
             textbox.textAutoResize = "HEIGHT";
             textbox.textStyleId = (typeof textStyleId === 'string') ? textStyleId : '';
+
             columns.appendChild(textbox);
           }
 
@@ -111,7 +119,7 @@ if (figma.editorType === 'figma') {
         //select and focus on the columns
         createTextbox().then(() => {
           figma.viewport.scrollAndZoomIntoView([columns]);
-          figma.viewport.zoom = 0.8;
+          figma.viewport.zoom = 0.5;
           figma.currentPage.selection = [columns];
         })
 
@@ -121,4 +129,4 @@ if (figma.editorType === 'figma') {
 
   }
 
-}
+// }
