@@ -115,6 +115,7 @@
 
   button {
     display: flex;
+    justify-content: center;
     align-items: center;
     border-radius: var(--border-radius-large);
     color: var(--white);
@@ -138,6 +139,7 @@
 
   .button--primary {
     background-color: var(--blue);
+    width: 90%;
   }
 
 
@@ -250,19 +252,23 @@
     opacity: 0.3;
   }
 
-  .radio {
+  .radio-wrapper,
+  .checkbox-wrapper {
     align-items: center;
     cursor: default;
     display: flex;
-    height: var(--size-medium);
+    /* height: var(--size-medium); */
     position: relative;
-    padding: 26px;
+    padding: 5px 20px;
     border-top: 1px solid var(--silver);
   }
 
+  .checkbox {
+    margin: 0;
+  }
   .radio__button {
     opacity: 0;
-    width: 10px;
+    /* width: 10px; */
     height: 10px;
     margin: 0;
     padding: 0;
@@ -316,7 +322,7 @@
     font-weight: var(--font-weight-normal);
     letter-spacing: var(--font-letter-spacing-pos-xsmall);
     line-height: var(--line-height);
-    color: var(--black3);
+    color: var(--black2);
     height: var(--size-medium);
     width: 100%;
     display: flex;
@@ -348,11 +354,38 @@
   .wrapper h2 {
     padding:20px 15px 0;
   }
+  #bar {
+    padding: 7px;
+    background: #f2f2f2;
+    border-bottom: 1px solid #eeeeee;
+    margin-top: 15px;
+    color:#000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* position: fixed;
+    bottom: 0;
+    left: 0; */
+    width: 100%;
+    z-index: 100;
+    font-size:9px;
+    box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2);
+    color: #797979;
+  }
+  a {
+    color:#3a3a3a;
+    text-decoration: none;
+    transition: .3s ease all;
+  }
+  a:hover {
+    opacity:50%;
+    transition: .3s ease all;
+  }
 </style>
 
 <div class="content-wrapper">
   <div class="wrapper">
-    <h2 class="label bold">Text to Columns</h2>
+    <!-- <h2 class="label bold">Text to Columns</h2> -->
     <div class="row">
       <div class="col">
         <label class="label">Column Count</label>
@@ -370,24 +403,30 @@
       </div>
     </div>
     <!-- Radio button -->
-    <div class="radio">
+    <div class="radio-wrapper">
       <input id="radioButton1" type="radio" class="radio__button" value="paragraphs" name="priority" checked>
       <label for="radioButton1" class="radio__label label">Prioritise Paragraphs</label>
       <input id="radioButton2" type="radio" class="radio__button" value="evenness" name="priority">
       <label for="radioButton2" class="radio__label label">Prioritise Even Split</label>
     </div>
-
+    <div class="checkbox-wrapper">
+      <input id="checkbox1" type="checkbox" class="checkbox" value="removeLinebreaks" name="removeLinebreaks" checked>
+      <label for="checkbox1" class="checkbox__label label">Remove multiple line breaks</label>
+    </div>
   </div>
   <button id="create" class="button button--primary">Create columns</button>
+
+  <div id="bar">If this helped you I would appreciate your support <a href="https://www.buymeacoffee.com/vN4AQtp" target="_blank">Buy me a Coffee ♥️</a></div>
 </div>
 
 <script>
   document.getElementById('create').onclick = () => {
-    console.log(document.querySelector('input[name="priority"]:checked'))
+    // console.log(document.querySelector('input[name="priority"]:checked'))
     const columnCount = parseInt(document.getElementById('column-count').value);
     const columnWidth = parseInt(document.getElementById('column-width').value);
     const columnGutter = parseInt(document.getElementById('column-gutter').value);
     const priority = document.querySelector('input[name="priority"]:checked').value;
+    const removeLinebreaks = document.querySelector('input[name="removeLinebreaks"]').checked;
 
     parent.postMessage({
       pluginMessage: {
@@ -395,7 +434,8 @@
         columnCount: columnCount,
         columnWidth: columnWidth,
         columnGutter: columnGutter,
-        priority: priority
+        priority: priority,
+        removeLinebreaks: removeLinebreaks
       }
     }, '*')
   }
