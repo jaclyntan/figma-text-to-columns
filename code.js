@@ -51,11 +51,15 @@ figma.ui.onmessage = msg => {
         // get any text styles - note that this will only work if one text style is used in the selection
         if (figma.currentPage.selection.length > 0 && figma.currentPage.selection[0].type === 'TEXT') {
             for (const node of figma.currentPage.selection) {
+                // console.log(node)
                 if ("textStyleId" in node) {
                     var textStyleId = node.textStyleId;
                 }
                 if ("fillStyleId" in node) {
                     var fillStyleId = node.fillStyleId;
+                }
+                if ("effectStyleId" in node) {
+                    var effectStyleId = node.effectStyleId;
                 }
                 if ("fills" in node) {
                     var blendMode = node.fills[0].blendMode, opacity = node.fills[0].opacity;
@@ -112,9 +116,28 @@ figma.ui.onmessage = msg => {
                 if ("paragraphSpacing" in node) {
                     var paragraphSpacing = node.paragraphSpacing;
                 }
+                if ("textDecoration" in node) {
+                    var textDecoration = node.textDecoration;
+                }
+                if ("textCase" in node) {
+                    var textCase = node.textCase;
+                }
+                if ("textAlignHorizontal" in node) {
+                    var textAlignHorizontal = node.textAlignHorizontal;
+                }
+                if ("opacity" in node) {
+                    var opacity = node.opacity;
+                }
+                if ("paragraphIndent" in node) {
+                    var paragraphIndent = node.paragraphIndent;
+                }
+                if ("leadingTrim" in node) {
+                    var leadingTrim = node.leadingTrim;
+                }
                 var textProps = {
                     textStyleId: textStyleId,
                     fillStyleId: fillStyleId,
+                    effectStyleId: effectStyleId,
                     fillProperties: {
                         blendMode: blendMode,
                         opacity: opacity,
@@ -128,6 +151,12 @@ figma.ui.onmessage = msg => {
                         fontSize: fontSize,
                         fontWeight: fontWeight,
                         paragraphSpacing: paragraphSpacing,
+                        textDecoration: textDecoration,
+                        textCase: textCase,
+                        textAlignHorizontal: textAlignHorizontal,
+                        opacity: opacity,
+                        paragraphIndent: paragraphIndent,
+                        leadingTrim: leadingTrim,
                         letterSpacing: {
                             unit: letterSpacingunit,
                             value: letterSpacingvalue
@@ -147,14 +176,13 @@ figma.ui.onmessage = msg => {
         if (figma.currentPage.selection.length > 0 && elem.type === 'TEXT') {
             var text = elem.characters;
             const textArray = [];
-            function removeWeirdChars() {
+            function removeWeirdChars(text) {
                 return __awaiter(this, void 0, void 0, function* () {
                     // this function is for removing any weird invisible chars in the string that Figma returns
                     // if you encounter any other weird chars/zero width chars please submit an issue so I can update the regex
-                    let re = new RegExp('\\u2028|\\u2029', 'g'), textString = text;
-                    textString.replace(re, '');
+                    let re = new RegExp('\\u2028|\\u2029', 'gm'), textString = text;
+                    textString = textString.replace(re, '');
                     //remove line breaks if chosen in the UI
-                    console.log(msg.removeLinebreaks);
                     if (removeLinebreaks) {
                         let lineBreaksre = new RegExp('(\\r\\n|\\r|\\n){2,}', 'g');
                         textString = textString.replace(lineBreaksre, '\n');
@@ -162,13 +190,14 @@ figma.ui.onmessage = msg => {
                     return textString;
                 });
             }
-            removeWeirdChars().then(function (value) {
+            removeWeirdChars(text).then(function (value) {
                 const splitIndex = Math.round(value.length / colCount);
+                console.log(value.length, splitIndex);
                 //regex is used to capture the string without slicing words
                 const pattern = (colPriority === 'paragraphs') ? '(.|\\n|\\r){1,' + splitIndex + '}[^\\s]*.*'
                     : (colPriority === 'evenness') ? '(.|\\n|\\r){1,' + splitIndex + '}[^\\s]*'
                         : '^(.|\\n|\\r){' + splitIndex + '}[^\\s]*';
-                var re = new RegExp(pattern, 'g');
+                var re = new RegExp(pattern, 'gm');
                 if (value.match(re) !== null) {
                     for (let i = 1; i <= colCount; i++) {
                         var string = (i === 1) ? value.match(re)[0]
@@ -193,7 +222,8 @@ figma.ui.onmessage = msg => {
             columns.layoutMode = "HORIZONTAL";
             columns.itemSpacing = colGutter;
             columns.clipsContent = false;
-            // columns.resizeWithoutConstraints(300,300)
+            columns.primaryAxisSizingMode = 'AUTO';
+            columns.counterAxisSizingMode = 'AUTO';
             columns.fills = [{ visible: false, type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
             if (figma.editorType === 'figjam') {
                 columns.x = elem.x + elem.width + 100;
@@ -236,6 +266,24 @@ figma.ui.onmessage = msg => {
                         let fontSizeVal = clone(textbox.fontSize);
                         fontSizeVal = textProps.textProperties.fontSize;
                         textbox.fontSize = fontSizeVal;
+                        let textCase = clone(textbox.textCase);
+                        textCase = textProps.textProperties.textCase;
+                        textbox.textCase = textCase;
+                        let textDecoration = clone(textbox.textDecoration);
+                        textDecoration = textProps.textProperties.textDecoration;
+                        textbox.textDecoration = textDecoration;
+                        let textAlignHorizontal = clone(textbox.textAlignHorizontal);
+                        textAlignHorizontal = textProps.textProperties.textAlignHorizontal;
+                        textbox.textAlignHorizontal = textAlignHorizontal;
+                        let opacity = clone(textbox.opacity);
+                        opacity = textProps.textProperties.opacity;
+                        textbox.opacity = opacity;
+                        let paragraphIndent = clone(textbox.paragraphIndent);
+                        paragraphIndent = textProps.textProperties.paragraphIndent;
+                        textbox.paragraphIndent = paragraphIndent;
+                        let leadingTrim = clone(textbox.leadingTrim);
+                        leadingTrim = textProps.textProperties.leadingTrim;
+                        textbox.leadingTrim = leadingTrim;
                         let lineHeight = clone(textbox.lineHeight);
                         lineHeight.unit = textProps.textProperties.lineHeight.unit;
                         if (textProps.textProperties.lineHeight.value) {
@@ -248,6 +296,7 @@ figma.ui.onmessage = msg => {
                         textbox.letterSpacing = letterSpacing;
                         textbox.textStyleId = (typeof textProps.textStyleId === 'string') ? textProps.textStyleId : '';
                         textbox.fillStyleId = (typeof textProps.fillStyleId === 'string') ? textProps.fillStyleId : '';
+                        textbox.effectStyleId = (typeof textProps.effectStyleId === 'string') ? textProps.effectStyleId : '';
                         columns.appendChild(textbox);
                     }
                 });
