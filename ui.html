@@ -343,7 +343,7 @@
 
   .wrapper .row {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 100px 1fr 52px;
     grid-gap: 20px;
     align-items: flex-start;
     padding: 10px;
@@ -382,6 +382,9 @@
     opacity:50%;
     transition: .3s ease all;
   }
+  select.input__field {
+    padding: var(--size-xxsmall) 0;
+  }
 </style>
 
 <div class="content-wrapper">
@@ -394,8 +397,11 @@
       </div>
 
       <div class="col">
-        <label class="label">Column Width</label>
-        <input type="input" class="input__field" id="column-width" type="number" value="350">
+        <select class="input__field" id="width-type">
+          <option value="column" selected>Column Width</option>
+          <option value="container">Container Width</option>
+        </select>
+        <input type="input" class="input__field" id="width" type="number" value="350">
       </div>
 
       <div class="col">
@@ -417,14 +423,15 @@
   </div>
   <button id="create" class="button button--primary">Create columns</button>
 
-  <div id="bar"><a href="https://www.buymeacoffee.com/jaclyntan" target="_blank">If this helped you please consider supporting me →</a></div>
+  <div id="bar"><a href="https://bento.me/jaclyntan" target="_blank">Suport my work ♥️</a></div>
 </div>
 
 <script>
   document.getElementById('create').onclick = () => {
     // console.log(document.querySelector('input[name="priority"]:checked'))
     const columnCount = parseInt(document.getElementById('column-count').value);
-    const columnWidth = parseInt(document.getElementById('column-width').value);
+    const widthType = document.getElementById('width-type').value;
+    const width = parseInt(document.getElementById('width').value);
     const columnGutter = parseInt(document.getElementById('column-gutter').value);
     const priority = document.querySelector('input[name="priority"]:checked').value;
     const removeLinebreaks = document.querySelector('input[name="removeLinebreaks"]').checked;
@@ -433,7 +440,8 @@
       pluginMessage: {
         type: 'create-columns',
         columnCount: columnCount,
-        columnWidth: columnWidth,
+        widthType: widthType,
+        width: width,
         columnGutter: columnGutter,
         priority: priority,
         removeLinebreaks: removeLinebreaks

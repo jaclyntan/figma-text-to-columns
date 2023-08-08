@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "es6",
     "lib": ["es2018"],
+    "strict": true,
     "typeRoots": [
       "./node_modules/@types",
       "./node_modules/@figma"
