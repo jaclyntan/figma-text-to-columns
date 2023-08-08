@@ -3,7 +3,7 @@ figma.showUI(__html__, {
   height: 253
 });
 
-figma.ui.onmessage = async (msg: { type: string, [key: string]: any }) => {
+figma.ui.onmessage = async (msg) => {
   if (msg.type === 'create-columns') {
     const {
       columnCount: colCount,
