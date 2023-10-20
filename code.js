@@ -14,8 +14,17 @@ figma.showUI(__html__, {
 });
 figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
     if (msg.type === 'create-columns') {
-        const { columnCount: colCount, width, widthType, columnGutter: colGutter, priority: colPriority, removeLinebreaks, } = msg;
+        const { width, widthType, columnCount: colCount, columnGutter: colGutter, priority: colPriority, removeLinebreaks, } = msg;
+        //get selection
         const elem = figma.currentPage.selection[0];
+        // create autolayout frame for the columns
+        const columns = figma.createFrame();
+        columns.layoutMode = 'HORIZONTAL';
+        columns.itemSpacing = colGutter;
+        columns.clipsContent = false;
+        columns.primaryAxisSizingMode = 'AUTO';
+        columns.counterAxisSizingMode = 'AUTO';
+        columns.fills = [{ visible: false, type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
         if (!elem || elem.type !== 'TEXT') {
             figma.notify('❌ Select a text element to continue ❌', { timeout: 3000 });
             return;
@@ -29,8 +38,10 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
             }
             return textString;
         }
+        // function to create each column
         function createTextbox(text) {
             return __awaiter(this, void 0, void 0, function* () {
+                console.log(text);
                 // Load required fonts asynchronously
                 yield figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
                 yield figma.loadFontAsync({ family: 'Inter', style: 'Medium' });
@@ -39,14 +50,12 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
                 textbox.resize(width, 500);
                 textbox.textAutoResize = 'HEIGHT';
                 textbox.paragraphSpacing = elem.paragraphSpacing;
-                // Util function for handling font properties
-                function setFontProperties() {
-                    textbox.fontName = elem.fontName !== figma.mixed ? elem.fontName : { family: 'Inter', style: 'Regular' };
-                    textbox.fontSize = elem.fontSize !== figma.mixed ? elem.fontSize : 12;
-                    textbox.textCase = elem.textCase !== figma.mixed ? elem.textCase : 'ORIGINAL';
-                    textbox.textDecoration = elem.textDecoration !== figma.mixed ? elem.textDecoration : 'NONE';
-                }
-                setFontProperties();
+                // Set font properties
+                textbox.fontName = elem.fontName !== figma.mixed ? elem.fontName : { family: 'Inter', style: 'Regular' };
+                textbox.fontSize = elem.fontSize !== figma.mixed ? elem.fontSize : 12;
+                textbox.textCase = elem.textCase !== figma.mixed ? elem.textCase : 'ORIGINAL';
+                textbox.textDecoration = elem.textDecoration !== figma.mixed ? elem.textDecoration : 'NONE';
+                // Set other properties
                 textbox.fills = elem.fills;
                 textbox.opacity = elem.opacity || 1;
                 textbox.paragraphIndent = elem.paragraphIndent;
@@ -71,6 +80,7 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
                 }
             });
         }
+        // start processing text
         const value = removeWeirdChars(elem.characters);
         const splitIndex = Math.round(value.length / colCount);
         const pattern = (colPriority === 'paragraphs')
@@ -85,13 +95,6 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
             return;
         }
         const textArray = matches.map((match) => match.replace(/^(\r\n|\n|\r)/, ''));
-        const columns = figma.createFrame();
-        columns.layoutMode = 'HORIZONTAL';
-        columns.itemSpacing = colGutter;
-        columns.clipsContent = false;
-        columns.primaryAxisSizingMode = 'AUTO';
-        columns.counterAxisSizingMode = 'AUTO';
-        columns.fills = [{ visible: false, type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
         if (figma.editorType === 'figjam') {
             columns.x = elem.x + elem.width + 100;
             columns.y = elem.y;
@@ -117,12 +120,12 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
             });
         }
         else {
-            textArray.forEach(() => {
-                createTextbox(elem.characters);
+            textArray.forEach((text) => {
+                createTextbox(text);
             });
-            // createTextbox(elem.characters);
-            figma.notify('The typography has been reset due to the text frame containing mixed styles', { timeout: 3000 });
+            figma.notify('❗️ The typography has been reset due to the text frame containing mixed styles', { timeout: 3000 });
         }
+        // place columns
         const x = elem.x;
         const y = elem.y;
         columns.x = x + elem.width + 50;
