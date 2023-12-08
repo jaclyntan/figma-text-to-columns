@@ -39,9 +39,8 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
             return textString;
         }
         // function to create each column
-        function createTextbox(text) {
+        function createTextbox(text, elem) {
             return __awaiter(this, void 0, void 0, function* () {
-                console.log(text);
                 // Load required fonts asynchronously
                 yield figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
                 yield figma.loadFontAsync({ family: 'Inter', style: 'Medium' });
@@ -50,6 +49,7 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
                 textbox.resize(width, 500);
                 textbox.textAutoResize = 'HEIGHT';
                 textbox.paragraphSpacing = elem.paragraphSpacing;
+                // console.log(elem.textStyleId)
                 // Set font properties
                 textbox.fontName = elem.fontName !== figma.mixed ? elem.fontName : { family: 'Inter', style: 'Regular' };
                 textbox.fontSize = elem.fontSize !== figma.mixed ? elem.fontSize : 12;
@@ -62,7 +62,7 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
                 textbox.leadingTrim = elem.leadingTrim;
                 textbox.lineHeight = elem.lineHeight !== figma.mixed ? elem.lineHeight : { unit: 'AUTO' };
                 textbox.letterSpacing = elem.letterSpacing !== figma.mixed ? elem.letterSpacing : { unit: 'PERCENT', value: 0 };
-                textbox.textStyleId = elem.textStyleId || '';
+                textbox.textStyleId = elem.textStyleId && elem.textStyleId !== figma.mixed ? elem.textStyleId : '';
                 textbox.fillStyleId = elem.fillStyleId || '';
                 textbox.effectStyleId = elem.effectStyleId || '';
                 columns.appendChild(textbox);
@@ -115,13 +115,13 @@ figma.ui.onmessage = (msg) => __awaiter(void 0, void 0, void 0, function* () {
                 figma.loadFontAsync(elem.fontName),
             ]).then((e) => {
                 textArray.forEach((text) => {
-                    createTextbox(text);
+                    createTextbox(text, elem);
                 });
             });
         }
         else {
             textArray.forEach((text) => {
-                createTextbox(text);
+                createTextbox(text, elem);
             });
             figma.notify('❗️ The typography has been reset due to the text frame containing mixed styles', { timeout: 3000 });
         }
