@@ -1,16 +1,18 @@
 {
-  "name": "Text-to-Columns",
-  "version": "1.0.0",
-  "description": "Your Figma plugin",
+  "name": "text-to-columns",
+  "version": "1.2.0",
+  "description": "Figma plugin that splits a text layer into evenly balanced columns",
   "main": "code.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "watch": "npm run build -- --watch"
+    "watch": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node test/split.test.js && node test/columns.test.js"
   },
-  "author": "",
-  "license": "",
+  "author": "Jaclyn Tan",
+  "license": "GPL-3.0",
   "devDependencies": {
-    "@figma/plugin-typings": "*",
-    "typescript": "*"
+    "@figma/plugin-typings": "^1.133.0",
+    "typescript": "^5.2.2"
   }
 }

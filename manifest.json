@@ -5,11 +5,45 @@
   "main": "code.js",
   "editorType": [
     "figma",
-    "figjam"
+    "figjam",
+    "slides",
+    "buzz"
   ],
   "ui": "ui.html",
+  "documentAccess": "dynamic-page",
+  "parameters": [
+    {
+      "name": "Columns",
+      "key": "columns",
+      "description": "How many columns to split the text into",
+      "allowFreeform": true
+    },
+    {
+      "name": "Width",
+      "key": "width",
+      "description": "Column width, or total width in container mode",
+      "allowFreeform": true,
+      "optional": true
+    },
+    {
+      "name": "Gutter",
+      "key": "gutter",
+      "description": "Space between the columns in pixels",
+      "allowFreeform": true,
+      "optional": true
+    }
+  ],
+  "parameterOnly": false,
+  "relaunchButtons": [
+    {
+      "command": "reflow",
+      "name": "Re-balance columns"
+    }
+  ],
   "networkAccess": {
-    "allowedDomains": ["none"],
-    "reasoning": ""
+    "allowedDomains": [
+      "none"
+    ],
+    "reasoning": "The plugin runs entirely offline."
   }
 }

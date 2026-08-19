@@ -1,456 +1,456 @@
 <style>
-  /* Vars */
   :root {
-    /* COLORS */
-    /* Accent */
-    --blue: #18a0fb;
-    --purple: #7b61ff;
-    --hot-pink: #ff00ff;
-    --green: #1bc47d;
-    --red: #f24822;
-    --yellow: #ffeb00;
-    /* Basic foreground */
-    --black: #000000;
-    --black8: rgba(0, 0, 0, .8);
-    --black8-opaque: #333333;
-    --black3: rgba(0, 0, 0, .3);
-    --black3-opaque: #B3B3B3;
-    --white: #ffffff;
-    --white8: rgba(255, 255, 255, .8);
-    --white4: rgba(255, 255, 255, .4);
-    /* Basic background */
-    --grey: #f0f0f0;
-    --silver: #e5e5e5;
-    --hud: #222222;
-    --toolbar: #2c2c2c;
-    /* Special */
-    --black1: rgba(0, 0, 0, .1);
-    --blue3: rgba(24, 145, 251, .3);
-    --purple4: rgba(123, 97, 255, .4);
-    --hover-fill: rgba(0, 0, 0, .06);
-    --selection-a: #daebf7;
-    --selection-b: #edf5fa;
-    --white2: rgba(255, 255, 255, .2);
-    /* TYPOGRAPHY */
-    /* Pos = positive applications (black on white) */
-    /* Neg = negative applications (white on black) */
-    /* Font stack */
-    --font-stack: 'Inter', sans-serif;
-    /* Font sizes */
-    --font-size-xsmall: 11px;
-    --font-size-small: 12px;
-    --font-size-large: 13px;
-    --font-size-xlarge: 14px;
-    /* Font weights */
-    --font-weight-normal: 400;
-    --font-weight-medium: 500;
-    --font-weight-bold: 600;
-    /* Lineheight */
-    --font-line-height: 16px;
-    /* Use For xsmall, small font sizes */
-    --font-line-height-large: 24px;
-    /* Use For large, xlarge font sizes */
-    /* Letterspacing */
-    --font-letter-spacing-pos-xsmall: .005em;
-    --font-letter-spacing-neg-xsmall: .01em;
-    --font-letter-spacing-pos-small: 0;
-    --font-letter-spacing-neg-small: .005em;
-    --font-letter-spacing-pos-large: -.0025em;
-    --font-letter-spacing-neg-large: .0025em;
-    --font-letter-spacing-pos-xlarge: -.001em;
-    --font-letter-spacing-neg-xlarge: -.001em;
-    /* BORDER RADIUS */
-    --border-radius-small: 2px;
-    --border-radius-med: 5px;
-    --border-radius-large: 6px;
-    /* SHADOWS */
-    --shadow-hud: 0 5px 17px rgba(0, 0, 0, .2), 0 2px 7px rgba(0, 0, 0, .15);
-    --shadow-floating-window: 0 2px 14px rgba(0, 0, 0, .15);
-    /* SPACING + SIZING */
-    --size-xxxsmall: 4px;
-    --size-xxsmall: 8px;
-    --size-xsmall: 16px;
-    --size-small: 24px;
-    --size-medium: 32px;
-    --size-large: 40px;
-    --size-xlarge: 48px;
-    --size-xxlarge: 64px;
-    --size-xxxlarge: 80px;
+    /* Figma injects --figma-color-* when the plugin is opened with themeColors,
+       which is what gives this UI light and dark support. */
+    --bg: var(--figma-color-bg, #ffffff);
+    --bg-secondary: var(--figma-color-bg-secondary, #f5f5f5);
+    --bg-hover: var(--figma-color-bg-hover, rgba(0, 0, 0, .06));
+    --text: var(--figma-color-text, rgba(0, 0, 0, .9));
+    --text-secondary: var(--figma-color-text-secondary, rgba(0, 0, 0, .5));
+    --text-danger: var(--figma-color-text-danger, #b3261e);
+    --border: var(--figma-color-border, rgba(0, 0, 0, .1));
+    --border-strong: var(--figma-color-border-strong, rgba(0, 0, 0, .3));
+    --brand: var(--figma-color-bg-brand, #0d99ff);
+    --brand-hover: var(--figma-color-bg-brand-hover, #007be5);
+    --on-brand: var(--figma-color-text-onbrand, #ffffff);
+    --disabled-bg: var(--figma-color-bg-disabled, rgba(0, 0, 0, .06));
+    --disabled-text: var(--figma-color-text-disabled, rgba(0, 0, 0, .3));
+
+    --radius: 5px;
+    --font-size: 11px;
+    --line-height: 16px;
   }
 
-  /* Global styles */
   * {
     box-sizing: border-box;
   }
 
   body {
-    position: relative;
-    box-sizing: border-box;
-    font-family: 'Inter', sans-serif;
     margin: 0;
     padding: 0;
-  }
-
-  /*  FONTS */
-  @font-face {
-    font-family: 'Inter';
-    font-weight: 400;
-    font-style: normal;
-    src: url("https://rsms.me/inter/font-files/Inter-Regular.woff2?v=3.7") format("woff2"), url("https://rsms.me/inter/font-files/Inter-Regular.woff?v=3.7") format("woff");
-  }
-
-  @font-face {
-    font-family: 'Inter';
-    font-weight: 500;
-    font-style: normal;
-    src: url("https://rsms.me/inter/font-files/Inter-Medium.woff2?v=3.7") format("woff2"), url("https://rsms.me/inter/font-files/Inter-Medium.woff2?v=3.7") format("woff");
-  }
-
-  @font-face {
-    font-family: 'Inter';
-    font-weight: 600;
-    font-style: normal;
-    src: url("https://rsms.me/inter/font-files/Inter-SemiBold.woff2?v=3.7") format("woff2"), url("https://rsms.me/inter/font-files/Inter-SemiBold.woff2?v=3.7") format("woff");
-  }
-
-  button {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: var(--border-radius-large);
-    color: var(--white);
-    flex-shrink: 0;
-    font-family: var(--font-stack);
-    font-size: var(--font-size-xsmall);
-    font-weight: var(--font-weight-medium);
-    letter-spacing: var(--font-letter-spacing-neg-small);
-    line-height: var(--font-line-height);
-    height: var(--size-medium);
-    padding: 0 var(--size-xsmall) 0 var(--size-xsmall);
-    text-decoration: none;
-    outline: none;
-    border: 2px solid transparent;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-    margin-left: 15px;
-  }
-
-  .button--primary {
-    background-color: var(--blue);
-    width: 90%;
-  }
-
-
-  .input {
-    position: relative;
-  }
-
-  .input__field {
-    font-size: var(--font-size-xsmall);
-    font-weight: var(--font-weight-normal);
-    letter-spacing: var(--font-letter-spacing-neg-xsmall);
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: var(--font-size);
     line-height: var(--line-height);
-    position: relative;
+    -webkit-font-smoothing: antialiased;
+    /* Fill the window so the footer can sit flush at the bottom of it. */
+    min-height: 100vh;
     display: flex;
-    overflow: visible;
-    align-items: center;
-    width: 100%;
-    height: 30px;
-    margin: 1px 0 1px 0;
-    padding: var(--size-xxsmall) var(--size-xxxsmall) var(--size-xxsmall) var(--size-xxsmall);
-    color: var(--black8);
-    border: 1px solid transparent;
-    border-radius: var(--border-radius-small);
-    outline: none;
-    background-color: var(--white);
+    flex-direction: column;
   }
 
-  .input__field:hover,
-  .input__field:placeholder-shown:hover {
-    color: var(--black8);
-    border: 1px solid var(--black1);
-    background-image: none;
+  .panel {
+    padding: 12px 16px 4px;
   }
 
-  .input__field::-moz-selection {
-    color: var(--black);
-    background-color: var(--blue3);
+  .grid {
+    display: grid;
+    /* The middle column is wider so the "Container width" label is never clipped. */
+    grid-template-columns: 0.85fr 1.3fr 0.85fr;
+    gap: 12px;
   }
 
-  .input__field::selection {
-    color: var(--black);
-    background-color: var(--blue3);
-  }
-
-  .input__field::-moz-placeholder {
-    color: var(--black3);
-    border: 1px solid transparent;
-  }
-
-  .input__field:-ms-input-placeholder {
-    color: var(--black3);
-    border: 1px solid transparent;
-  }
-
-  .input__field::placeholder {
-    color: var(--black3);
-    border: 1px solid transparent;
-  }
-
-  .input__field:placeholder-shown {
-    border: 1px solid var(--black1);
-  }
-
-  .input__field:focus:placeholder-shown {
-    border: 1px solid var(--blue);
-    outline: 1px solid var(--blue);
-    outline-offset: -2px;
-  }
-
-  .input__field:disabled:hover {
-    border: 1px solid transparent;
-  }
-
-  .input__field:active,
-  .input__field:focus {
-    color: var(--black);
-    border: 1px solid var(--blue);
-    outline: 1px solid var(--blue);
-    outline-offset: -2px;
-  }
-
-  .input__field:disabled {
-    position: relative;
-    color: var(--black3);
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-  }
-
-  .input__field:disabled:active {
-    outline: none;
-  }
-
-  .input--with-icon .input__field {
-    padding-left: 32px;
-  }
-
-  .input--borders {
-    border: 1px solid var(--black1);
-  }
-
-  .input .icon {
-    position: absolute;
-    top: 0px;
-    left: 0;
-    width: var(--size-medium);
-    height: var(--size-medium);
-    z-index: 1;
-    opacity: 0.3;
-  }
-
-  .radio-wrapper,
-  .checkbox-wrapper {
-    align-items: center;
-    cursor: default;
+  .field {
     display: flex;
-    /* height: var(--size-medium); */
-    position: relative;
-    padding: 5px 20px;
-    border-top: 1px solid var(--silver);
-  }
-
-  .checkbox {
-    margin: 0;
-  }
-
-  .radio__button {
-    opacity: 0;
-    /* width: 10px; */
-    height: 10px;
-    margin: 0;
-    padding: 0;
-  }
-
-  .radio__button:checked+.radio__label:before {
-    background-image: url('data:image/svg+xml,%3Csvg width="6" height="6" viewBox="0 0 6 6" fill="none" xmlns="http://www.w3.org/2000/svg"%3E%3Crect width="6" height="6" rx="3" fill="black" fill-opacity="0.8"/%3E%3C/svg%3E%0A');
-    background-repeat: no-repeat;
-    background-position: 2px 2px;
-  }
-
-  .radio__button:disabled+.radio__label {
-    opacity: 0.3;
-  }
-
-  .radio__button:checked:disabled+.radio__label:before {
-    border: 1px solid var(--black);
-  }
-
-  .radio__label {
-    align-items: center;
-    color: var(--black8);
-    display: flex;
-    font-family: var(--font-stack);
-    font-size: var(--font-size-xsmall);
-    font-weight: var(--font-weight-normal);
-    line-height: var(--font-line-height);
-    letter-spacing: var(--font-letter-spacing-pos-xsmall);
-    margin-left: -16px;
-    padding: 0 var(--size-xsmall) 0 var(--size-small);
-    height: 100%;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-  }
-
-  .radio__label:before {
-    border: 1px solid var(--black8);
-    border-radius: var(--border-radius-small);
-    content: '';
-    display: block;
-    width: 10px;
-    height: 10px;
-    margin: 2px 10px 0 -8px;
-    border-radius: 50%;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
   }
 
   .label {
-    font-size: var(--font-size-xsmall);
-    font-weight: var(--font-weight-normal);
-    letter-spacing: var(--font-letter-spacing-pos-xsmall);
-    line-height: var(--line-height);
-    color: var(--black2);
-    height: var(--size-medium);
-    width: 100%;
+    color: var(--text-secondary);
+    height: 20px;
     display: flex;
     align-items: center;
-    cursor: default;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     user-select: none;
-    padding: 0 var(--size-xxxsmall) 0 var(--size-xxsmall);
   }
 
-  .label.bold {
-    color: var(--black);
-    font-weight: var(--font-weight-bold);
-    margin-bottom: 10px;
-  }
-
-  .wrapper .row {
-    display: grid;
-    grid-template-columns: 100px 1fr 52px;
-    grid-gap: 20px;
-    align-items: flex-start;
-    padding: 10px;
-  }
-
-  .col {
-    margin-bottom: 10px;
-  }
-
-  .wrapper h2 {
-    padding: 20px 15px 0;
-  }
-
-  #bar {
-    text-align: center;
-    padding: 7px;
-    background: #f2f2f2;
-    border-bottom: 1px solid #eeeeee;
-    margin-top: 15px;
-    color: #000;
-    /* display: flex; */
-    align-items: center;
-    /* justify-content: space-between; */
-    /* position: fixed;
-    bottom: 0;
-    left: 0; */
+  .input,
+  .label-select {
     width: 100%;
-    z-index: 100;
+    height: 30px;
+    padding: 0 6px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: var(--font-size);
+    line-height: var(--line-height);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    outline: none;
+  }
+
+  .input:hover,
+  .label-select:hover {
+    border-color: var(--border-strong);
+  }
+
+  .input:focus,
+  .label-select:focus {
+    border-color: var(--brand);
+    box-shadow: inset 0 0 0 1px var(--brand);
+  }
+
+  /* Doubles as the label for the width field. */
+  .label-select {
+    height: 20px;
+    padding: 0 14px 0 2px;
+    color: var(--text-secondary);
+    background: transparent;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23888'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 2px center;
+    border-color: transparent;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    cursor: pointer;
+  }
+
+  /* Hide the number spinners — the values are clamped on the plugin side. */
+  .input::-webkit-outer-spin-button,
+  .input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+  }
+
+  .input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  .options {
+    margin-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .option-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .choice {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .choice input {
+    margin: 0;
+    accent-color: var(--brand);
+    cursor: pointer;
+  }
+
+  .actions {
+    padding: 12px 16px;
+  }
+
+  .status {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+    min-height: var(--line-height);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .status.is-error {
+    color: var(--text-danger);
+  }
+
+  .button {
+    width: 100%;
+    height: 32px;
+    color: var(--on-brand);
+    background: var(--brand);
+    font-family: inherit;
+    font-size: var(--font-size);
+    font-weight: 500;
+    line-height: var(--line-height);
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+  }
+
+  .button:hover:not(:disabled) {
+    background: var(--brand-hover);
+  }
+
+  .button:disabled {
+    color: var(--disabled-text);
+    background: var(--disabled-bg);
+    cursor: default;
+  }
+
+  .footer {
+    /* Pushed to the bottom of the window, so any leftover space sits above it. */
+    margin-top: auto;
+    padding: 0 16px 10px;
+    text-align: center;
     font-size: 9px;
-    box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2);
-    color: var(--black2);
   }
 
-  a {
-    color: var(--black);
+  .footer a {
+    color: var(--text-secondary);
     text-decoration: none;
-    transition: .3s ease all;
+    opacity: 0.6;
   }
 
-  a:hover {
-    opacity: 50%;
-    transition: .3s ease all;
-  }
-
-  select.input__field {
-    padding: var(--size-xxsmall) 0;
+  .footer a:hover {
+    opacity: 1;
+    text-decoration: underline;
   }
 </style>
 
-<div class="content-wrapper">
-  <div class="wrapper">
-    <div class="row">
-      <div class="col">
-        <label class="label">Column Count</label>
-        <input type="input" class="input__field" id="column-count" type="number" value="2">
-      </div>
-
-      <div class="col">
-        <select class="input__field" id="width-type">
-          <option value="column" selected>Column Width</option>
-          <option value="container">Container Width</option>
-        </select>
-        <input type="input" class="input__field" id="width" type="number" value="350">
-      </div>
-
-      <div class="col">
-        <label class="label">Gutter</label>
-        <input type="input" class="input__field" id="column-gutter" type="number" value="50">
-      </div>
+<div class="panel">
+  <div class="grid">
+    <div class="field">
+      <label class="label" for="column-count">Columns</label>
+      <input class="input" id="column-count" type="number" min="2" max="50" step="1" value="2">
     </div>
-    <div class="radio-wrapper">
-      <input id="radioButton1" type="radio" class="radio__button" value="paragraphs" name="priority" checked>
-      <label for="radioButton1" class="radio__label label">Prioritise Paragraphs</label>
-      <input id="radioButton2" type="radio" class="radio__button" value="evenness" name="priority">
-      <label for="radioButton2" class="radio__label label">Prioritise Even Split</label>
+
+    <div class="field">
+      <select class="label-select" id="width-type" aria-label="How the width is measured">
+        <option value="column">Column width</option>
+        <option value="container">Container width</option>
+      </select>
+      <input class="input" id="width" type="number" min="1" max="10000" step="1" value="350">
     </div>
-    <div class="checkbox-wrapper">
-      <input id="checkbox1" type="checkbox" class="checkbox" value="removeLinebreaks" name="removeLinebreaks" checked>
-      <label for="checkbox1" class="checkbox__label label">Remove multiple line breaks</label>
+
+    <div class="field">
+      <label class="label" for="column-gutter">Gutter</label>
+      <input class="input" id="column-gutter" type="number" min="0" max="5000" step="1" value="50">
     </div>
   </div>
-  <button id="create" class="button button--primary">Create columns</button>
-
-  <div id="bar"><a href="https://www.buymeacoffee.com/jaclyntan" target="_blank">Buy me a coffee ♥️</a></div>
 </div>
 
-<script>
-  document.getElementById('create').onclick = () => {
-    // console.log(document.querySelector('input[name="priority"]:checked'))
-    const columnCount = parseInt(document.getElementById('column-count').value);
-    const widthType = document.getElementById('width-type').value;
-    const width = parseInt(document.getElementById('width').value);
-    const columnGutter = parseInt(document.getElementById('column-gutter').value);
-    const priority = document.querySelector('input[name="priority"]:checked').value;
-    const removeLinebreaks = document.querySelector('input[name="removeLinebreaks"]').checked;
+<div class="options">
+  <div class="option-row">
+    <label class="choice">
+      <input type="radio" name="priority" value="paragraphs" checked>
+      Prioritise paragraphs
+    </label>
+    <label class="choice">
+      <input type="radio" name="priority" value="evenness">
+      Prioritise even split
+    </label>
+  </div>
+  <div class="option-row">
+    <label class="choice">
+      <input type="checkbox" id="remove-linebreaks" checked>
+      Remove multiple line breaks
+    </label>
+  </div>
+</div>
 
-    parent.postMessage({
-      pluginMessage: {
-        type: 'create-columns',
-        columnCount: columnCount,
-        widthType: widthType,
-        width: width,
-        columnGutter: columnGutter,
-        priority: priority,
-        removeLinebreaks: removeLinebreaks
-      }
-    }, '*')
+<div class="actions">
+  <span class="status" id="status">Select a text layer</span>
+  <button class="button" id="create" disabled>Create columns</button>
+</div>
+
+<div class="footer"><a href="https://www.buymeacoffee.com/jaclyntan" target="_blank" rel="noopener">Buy me a coffee ♥️</a></div>
+
+<script>
+  var byId = function (id) { return document.getElementById(id); };
+
+  var columnCountInput = byId('column-count');
+  var widthInput = byId('width');
+  var gutterInput = byId('column-gutter');
+  var widthTypeSelect = byId('width-type');
+  var removeLinebreaksInput = byId('remove-linebreaks');
+  var statusEl = byId('status');
+  var createButton = byId('create');
+
+  var limits = {
+    columnCount: { min: 2, max: 50 },
+    width: { min: 1, max: 10000 },
+    columnGutter: { min: 0, max: 5000 }
+  };
+
+  var selection = { mode: 'none', name: null, id: null, width: null };
+  var busy = false;
+  var hasStoredSettings = false;
+  var lastFilledId = null;
+  var didPrefillWidth = false;
+  var lastPostedHeight = 0;
+
+  var fields = [
+    { input: columnCountInput, limit: 'columnCount', label: 'Columns' },
+    { input: widthInput, limit: 'width', label: 'Width' },
+    { input: gutterInput, limit: 'columnGutter', label: 'Gutter' }
+  ];
+
+  /** Reads the fields as typed — no rewriting, so multi-digit entry still works. */
+  function currentValues() {
+    return {
+      columnCount: Math.round(parseFloat(columnCountInput.value)),
+      width: Math.round(parseFloat(widthInput.value)),
+      columnGutter: Math.round(parseFloat(gutterInput.value)),
+      widthType: widthTypeSelect.value,
+      priority: document.querySelector('input[name="priority"]:checked').value,
+      removeLinebreaks: removeLinebreaksInput.checked
+    };
   }
+
+  /** Pulls every field back into range. Only called on blur and on submit. */
+  function clampFields() {
+    fields.forEach(function (field) {
+      var limit = limits[field.limit];
+      var value = Math.round(parseFloat(field.input.value));
+      if (!isFinite(value)) value = parseFloat(field.input.defaultValue);
+      field.input.value = String(Math.min(limit.max, Math.max(limit.min, value)));
+    });
+  }
+
+  /** Returns an error string, or null when the settings can be used. */
+  function validate(values) {
+    for (var i = 0; i < fields.length; i++) {
+      var limit = limits[fields[i].limit];
+      var value = values[fields[i].limit];
+      if (!isFinite(value) || value < limit.min || value > limit.max) {
+        return fields[i].label + ' must be between ' + limit.min + ' and ' + limit.max;
+      }
+    }
+
+    if (values.widthType !== 'container') return null;
+    var gutters = values.columnGutter * (values.columnCount - 1);
+    if (values.width - gutters < values.columnCount) {
+      return 'Container is too narrow for ' + values.columnCount + ' columns';
+    }
+    return null;
+  }
+
+  function setStatus(message, isError) {
+    statusEl.textContent = message;
+    statusEl.className = isError ? 'status is-error' : 'status';
+    postHeight();
+  }
+
+  function refresh() {
+    var values = currentValues();
+    var error = validate(values);
+    var reflow = selection.mode === 'reflow';
+
+    createButton.textContent = reflow ? 'Update columns' : 'Create columns';
+
+    if (error) {
+      setStatus(error, true);
+    } else if (selection.mode === 'none') {
+      setStatus('Select a text layer, or columns to update', false);
+    } else if (reflow) {
+      setStatus('Update — ' + selection.name, false);
+    } else {
+      setStatus('Ready — ' + selection.name, false);
+    }
+
+    createButton.disabled = busy || selection.mode === 'none' || !!error;
+  }
+
+  function submit() {
+    if (busy || selection.mode === 'none') return;
+
+    // Pressing Enter straight after typing an out-of-range value should still work.
+    clampFields();
+    var values = currentValues();
+    refresh();
+    if (validate(values)) return;
+
+    busy = true;
+    createButton.disabled = true;
+    values.type = 'create-columns';
+    values.mode = selection.mode;
+    parent.postMessage({ pluginMessage: values }, '*');
+  }
+
+  function applySettings(settings) {
+    if (!settings) return;
+    columnCountInput.value = settings.columnCount;
+    widthInput.value = settings.width;
+    gutterInput.value = settings.columnGutter;
+    widthTypeSelect.value = settings.widthType;
+    removeLinebreaksInput.checked = settings.removeLinebreaks;
+    var radio = document.querySelector('input[name="priority"][value="' + settings.priority + '"]');
+    if (radio) radio.checked = true;
+  }
+
+  /**
+   * The height the content actually needs. Measured from the bottom of the actions
+   * plus the footer, rather than from scrollHeight — scrollHeight never reports less
+   * than the current window, so the window could only ever grow.
+   */
+  function contentHeight() {
+    var actions = document.querySelector('.actions');
+    var footer = document.querySelector('.footer');
+    var top = document.body.getBoundingClientRect().top;
+    return Math.ceil(actions.getBoundingClientRect().bottom - top + footer.offsetHeight);
+  }
+
+  function postHeight() {
+    // Only when it actually changes — refresh() runs on every keystroke.
+    var height = contentHeight();
+    if (height === lastPostedHeight) return;
+    lastPostedHeight = height;
+    parent.postMessage({ pluginMessage: { type: 'resize', height: height } }, '*');
+  }
+
+  createButton.addEventListener('click', submit);
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter' && !event.isComposing) submit();
+  });
+
+  fields.forEach(function (field) {
+    field.input.addEventListener('input', refresh);
+    field.input.addEventListener('blur', function () {
+      clampFields();
+      refresh();
+    });
+  });
+  widthTypeSelect.addEventListener('change', refresh);
+
+  onmessage = function (event) {
+    var msg = event.data && event.data.pluginMessage;
+    if (!msg) return;
+
+    if (msg.type === 'init') {
+      if (msg.limits) limits = msg.limits;
+      hasStoredSettings = !!msg.hasStoredSettings;
+      applySettings(msg.settings);
+      refresh();
+    } else if (msg.type === 'selection') {
+      selection = { mode: msg.mode, name: msg.name, id: msg.id, width: msg.width };
+
+      // Selecting a different set of columns shows the settings they were built with.
+      if (msg.settings && msg.id !== lastFilledId) {
+        applySettings(msg.settings);
+        lastFilledId = msg.id;
+      }
+
+      // First run with nothing saved: start from the width of the selected layer.
+      // Once only, so it never overwrites a width the user has typed.
+      if (!hasStoredSettings && !didPrefillWidth && msg.mode === 'create' && msg.width) {
+        widthInput.value = String(msg.width);
+        didPrefillWidth = true;
+      }
+
+      refresh();
+    } else if (msg.type === 'done') {
+      busy = false;
+      refresh();
+    }
+  };
+
+  window.addEventListener('load', postHeight);
+  refresh();
 </script>

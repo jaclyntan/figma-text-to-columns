@@ -1,11 +1,11 @@
 {
   "compilerOptions": {
-    "target": "es6",
-    "lib": ["es6"],
+    "target": "es2019",
+    "lib": ["es2019"],
+    "types": ["@figma/plugin-typings"],
+    "module": "esnext",
     "strict": true,
-    "typeRoots": [
-      "./node_modules/@types",
-      "./node_modules/@figma"
-    ]
-  }
+    "sourceMap": true
+  },
+  "include": ["./code.ts"]
 }
