@@ -12,8 +12,8 @@
  */
 const UI_WIDTH = 340;
 /** Close to the real content height, so the window does not visibly resize on open. */
-const UI_INITIAL_HEIGHT = 255;
-const UI_MIN_HEIGHT = 240;
+const UI_INITIAL_HEIGHT = 229;
+const UI_MIN_HEIGHT = 200;
 const UI_MAX_HEIGHT = 640;
 const SETTINGS_KEY = 'settings';
 /** Marks a frame as ours and stores what is needed to rebuild it. */
@@ -32,6 +32,8 @@ const DEFAULTS = {
     columnGutter: 50,
     priority: 'paragraphs',
     removeLinebreaks: true,
+    widthVariableId: null,
+    gutterVariableId: null,
 };
 const LIMITS = {
     columnCount: { min: 2, max: 50 },
@@ -198,8 +200,11 @@ function clampInt(value, fallback, min, max) {
         return fallback;
     return Math.min(max, Math.max(min, Math.round(parsed)));
 }
+function readVariableId(value) {
+    return typeof value === 'string' && value.length > 0 && value.length < 200 ? value : null;
+}
 function readSettings(msg) {
-    const widthType = msg && msg.widthType === 'container' ? 'container' : 'column';
+    const widthType = msg && (msg.widthType === 'container' || msg.widthType === 'fill') ? msg.widthType : 'column';
     const priority = msg && msg.priority === 'evenness' ? 'evenness' : 'paragraphs';
     return {
         columnCount: clampInt(msg && msg.columnCount, DEFAULTS.columnCount, LIMITS.columnCount.min, LIMITS.columnCount.max),
@@ -208,14 +213,26 @@ function readSettings(msg) {
         widthType,
         priority,
         removeLinebreaks: msg ? msg.removeLinebreaks !== false : DEFAULTS.removeLinebreaks,
+        widthVariableId: readVariableId(msg && msg.widthVariableId),
+        gutterVariableId: readVariableId(msg && msg.gutterVariableId),
     };
 }
+/** Every selected text layer, in selection order. */
+function selectedTextNodes() {
+    return figma.currentPage.selection.filter((node) => node.type === 'TEXT');
+}
 function firstSelectedText() {
-    for (const node of figma.currentPage.selection) {
-        if (node.type === 'TEXT')
-            return node;
+    return selectedTextNodes()[0] || null;
+}
+/** True when the node sits inside a component instance, where children are read-only. */
+function isInsideInstance(node) {
+    let current = node;
+    while (current) {
+        if (current.type === 'INSTANCE')
+            return true;
+        current = current.parent;
     }
-    return null;
+    return false;
 }
 async function loadFonts(fonts) {
     const unique = new Map();
@@ -282,13 +299,9 @@ function readFrameData(node) {
         return null;
     }
 }
-/** A frame this plugin generated, whose columns can be re-flowed. */
-function selectedColumnFrame() {
-    for (const node of figma.currentPage.selection) {
-        if (node.type === 'FRAME' && readFrameData(node))
-            return node;
-    }
-    return null;
+/** Every selected frame this plugin generated, whose columns can be re-flowed. */
+function selectedColumnFrames() {
+    return figma.currentPage.selection.filter((node) => node.type === 'FRAME' && !!readFrameData(node));
 }
 /**
  * The text layers this plugin put in the frame, in column order. Text the user
@@ -452,6 +465,112 @@ async function createColumn(range, context) {
     await applyStyleRuns(textbox, 0, range.start, range.end, context);
     return textbox;
 }
+const MAX_VARIABLE_OPTIONS = 500;
+const MAX_ALIAS_DEPTH = 8;
+async function collectionFor(id, cache) {
+    const cached = cache.get(id);
+    if (cached)
+        return cached;
+    const found = await figma.variables.getVariableCollectionByIdAsync(id);
+    if (found)
+        cache.set(id, found);
+    return found;
+}
+/** The variable's value in its collection's default mode, following aliases. */
+async function resolveNumber(variable, cache, depth = 0) {
+    if (depth > MAX_ALIAS_DEPTH)
+        return null;
+    const collection = await collectionFor(variable.variableCollectionId, cache);
+    if (!collection)
+        return null;
+    const value = variable.valuesByMode[collection.defaultModeId];
+    if (typeof value === 'number')
+        return isFinite(value) ? value : null;
+    if (value && typeof value === 'object' && value.type === 'VARIABLE_ALIAS') {
+        const target = await figma.variables.getVariableByIdAsync(value.id);
+        return target ? resolveNumber(target, cache, depth + 1) : null;
+    }
+    return null;
+}
+/** The file's local number variables, for the window to offer. */
+async function listNumberVariables() {
+    try {
+        const [variables, collections] = await Promise.all([
+            figma.variables.getLocalVariablesAsync('FLOAT'),
+            figma.variables.getLocalVariableCollectionsAsync(),
+        ]);
+        const cache = new Map();
+        collections.forEach((collection) => cache.set(collection.id, collection));
+        const options = [];
+        for (const variable of variables) {
+            if (options.length >= MAX_VARIABLE_OPTIONS)
+                break;
+            const value = await resolveNumber(variable, cache);
+            if (value === null)
+                continue;
+            const collection = cache.get(variable.variableCollectionId);
+            options.push({
+                id: variable.id,
+                name: variable.name,
+                collection: collection ? collection.name : '',
+                value: Math.round(value * 100) / 100,
+            });
+        }
+        options.sort((a, b) => a.collection.localeCompare(b.collection) || a.name.localeCompare(b.name));
+        return options;
+    }
+    catch (error) {
+        // Listing is a convenience — the fields still work with typed numbers.
+        return [];
+    }
+}
+async function lookupNumberVariable(id, cache) {
+    if (!id)
+        return null;
+    try {
+        const variable = await figma.variables.getVariableByIdAsync(id);
+        if (!variable || variable.resolvedType !== 'FLOAT')
+            return null;
+        const value = await resolveNumber(variable, cache);
+        return value === null ? null : { variable, value };
+    }
+    catch (error) {
+        return null;
+    }
+}
+/**
+ * Looks the bound variables up again at build time. The window only knows what it
+ * was last sent, and a variable may have been renamed, changed or deleted since.
+ */
+async function resolveBindings(requested) {
+    const settings = Object.assign({}, requested);
+    const cache = new Map();
+    const missing = [];
+    let widthVariable = null;
+    let gutterVariable = null;
+    // Fill parent takes its width from the parent, so a width variable is not used.
+    if (requested.widthType !== 'fill') {
+        const found = await lookupNumberVariable(requested.widthVariableId, cache);
+        if (found) {
+            widthVariable = found.variable;
+            settings.width = clampInt(found.value, requested.width, LIMITS.width.min, LIMITS.width.max);
+        }
+        else if (requested.widthVariableId) {
+            missing.push('width');
+            settings.widthVariableId = null;
+        }
+    }
+    const gutter = await lookupNumberVariable(requested.gutterVariableId, cache);
+    if (gutter) {
+        gutterVariable = gutter.variable;
+        settings.columnGutter = clampInt(gutter.value, requested.columnGutter, LIMITS.columnGutter.min, LIMITS.columnGutter.max);
+    }
+    else if (requested.gutterVariableId) {
+        missing.push('gutter');
+        settings.gutterVariableId = null;
+    }
+    return { settings, widthVariable, gutterVariable, missing };
+}
 /**
  * The nearest ancestor the columns can be dropped into: a container that is not
  * running auto layout, so they sit beside the text instead of being pulled into a
@@ -478,7 +597,35 @@ function placementContainer(source) {
     }
     return null;
 }
-function placeColumns(frame, source, gap) {
+/** The auto layout frame directly holding the node, when columns can join it. */
+function autoLayoutParent(node) {
+    const parent = node.parent;
+    if (!parent)
+        return null;
+    if (parent.type !== 'FRAME' && parent.type !== 'COMPONENT' && parent.type !== 'SLIDE')
+        return null;
+    if (parent.layoutMode === 'NONE' || isInsideInstance(parent))
+        return null;
+    return parent;
+}
+/** How much room "fill parent" has for a node: the parent's width less its padding. */
+function fillWidthFor(node) {
+    const flow = autoLayoutParent(node);
+    if (flow)
+        return flow.width - flow.paddingLeft - flow.paddingRight;
+    const container = placementContainer(node);
+    return container ? container.width : node.width;
+}
+function placeColumns(frame, source, gap, fill) {
+    if (fill) {
+        const flow = autoLayoutParent(source);
+        if (flow) {
+            // Straight after the text in the same layout, so the columns flow with
+            // everything around them. Sized to fill by applyFillSizing.
+            flow.insertChild(flow.children.indexOf(source) + 1, frame);
+            return;
+        }
+    }
     const container = placementContainer(source);
     if (container) {
         container.appendChild(frame);
@@ -489,31 +636,85 @@ function placeColumns(frame, source, gap) {
     // Coordinates are relative to whatever the frame ended up inside.
     const sourceBox = source.absoluteBoundingBox;
     const containerBox = container ? container.absoluteBoundingBox : null;
+    const offsetX = containerBox ? containerBox.x : 0;
+    const offsetY = containerBox ? containerBox.y : 0;
+    if (fill) {
+        // As wide as the parent, so it goes under the text rather than beside it.
+        frame.x = container ? 0 : sourceBox ? sourceBox.x : source.x;
+        frame.y = (sourceBox ? sourceBox.y + sourceBox.height : source.y + source.height) + gap - offsetY;
+        return;
+    }
     if (sourceBox) {
-        frame.x = sourceBox.x + sourceBox.width + gap - (containerBox ? containerBox.x : 0);
-        frame.y = sourceBox.y - (containerBox ? containerBox.y : 0);
+        frame.x = sourceBox.x + sourceBox.width + gap - offsetX;
+        frame.y = sourceBox.y - offsetY;
     }
     else {
         frame.x = source.x + source.width + gap;
         frame.y = source.y;
     }
 }
+/**
+ * Sizes the frame to its parent once it is in place. Returns false when there is
+ * no parent to fill, in which case it takes `fallbackWidth` instead.
+ */
+function applyFillSizing(frame, fallbackWidth) {
+    const parent = frame.parent;
+    const inFlow = !!parent &&
+        (parent.type === 'FRAME' || parent.type === 'COMPONENT' || parent.type === 'SLIDE') &&
+        parent.layoutMode !== 'NONE';
+    if (inFlow) {
+        frame.layoutSizingHorizontal = 'FILL';
+        return true;
+    }
+    const isContainer = !!parent &&
+        (parent.type === 'FRAME' ||
+            parent.type === 'COMPONENT' ||
+            parent.type === 'SECTION' ||
+            parent.type === 'SLIDE');
+    frame.primaryAxisSizingMode = 'FIXED';
+    frame.resize(isContainer ? parent.width : fallbackWidth, frame.height);
+    return isContainer;
+}
+/** A frame that used to fill its parent has to give that up when the mode changes. */
+function releaseFillSizing(frame, widthType) {
+    const parent = frame.parent;
+    const inFlow = !!parent &&
+        (parent.type === 'FRAME' || parent.type === 'COMPONENT' || parent.type === 'SLIDE') &&
+        parent.layoutMode !== 'NONE';
+    if (!inFlow)
+        return;
+    try {
+        frame.layoutSizingHorizontal = widthType === 'container' ? 'FIXED' : 'HUG';
+    }
+    catch (error) {
+        // Not a layout child after all — nothing to release.
+    }
+}
+const fail = (error) => ({ ok: false, error });
 async function buildColumns(request) {
-    const { content, settings } = request;
+    const { content } = request;
+    const target = request.target;
+    const bindings = await resolveBindings(request.settings);
+    const settings = bindings.settings;
+    const notes = [];
+    if (bindings.missing.length) {
+        notes.push(`The ${bindings.missing.join(' and ')} variable could not be found, so its last value was used.`);
+    }
+    const anchor = target.mode === 'create' ? target.beside : target.frame;
+    // Read before anything is rebuilt, since a re-flow resizes the frame as it goes.
+    const anchorWidth = anchor.width;
+    const fill = settings.widthType === 'fill';
     const gutter = settings.columnGutter;
     const totalGutters = gutter * (settings.columnCount - 1);
     if (settings.widthType === 'container' && settings.width - totalGutters < settings.columnCount) {
-        figma.notify('Container width is too small for that many columns and gutters', {
-            error: true,
-            timeout: 4000,
-        });
-        return null;
+        return fail('Container width is too small for that many columns and gutters');
+    }
+    if (fill && fillWidthFor(anchor) - totalGutters < settings.columnCount) {
+        return fail('The parent is too narrow for that many columns and gutters');
     }
     const normalised = normalise(content.characters, settings.removeLinebreaks);
-    if (!normalised.text.trim()) {
-        figma.notify('There is no text to split', { error: true, timeout: 3000 });
-        return null;
-    }
+    if (!normalised.text.trim())
+        return fail('There is no text to split');
     // Map every character of the original onto the segment that styles it.
     const segmentAt = new Int32Array(content.characters.length);
     segmentAt.fill(-1);
@@ -537,10 +738,8 @@ async function buildColumns(request) {
         .map((segment) => segment.fontName)
         .concat(FALLBACK_FONTS)
         .filter((font) => loaded.has(fontKey(font)))[0];
-    if (!fallbackFont) {
-        figma.notify('Could not load a font to build the columns with', { error: true, timeout: 4000 });
-        return null;
-    }
+    if (!fallbackFont)
+        return fail('Could not load a font to build the columns with');
     const context = {
         content,
         normalised,
@@ -548,11 +747,8 @@ async function buildColumns(request) {
         fonts: { loaded, fallback: fallbackFont },
     };
     const ranges = trimRanges(normalised.text, splitIntoRanges(normalised.text, settings.columnCount, breakpoints));
-    if (!ranges.length) {
-        figma.notify('There is not enough text to create columns', { error: true, timeout: 3000 });
-        return null;
-    }
-    const target = request.target;
+    if (!ranges.length)
+        return fail('There is not enough text to create columns');
     const frame = target.mode === 'reflow' ? target.frame : figma.createFrame();
     // Only the columns are replaced — anything else the user put in the frame stays.
     const previousChildren = target.mode === 'reflow' ? columnChildren(frame) : [];
@@ -565,6 +761,9 @@ async function buildColumns(request) {
             frame.clipsContent = false;
             frame.fills = [];
             frame.counterAxisAlignItems = 'MIN';
+        }
+        else if (!fill) {
+            releaseFillSizing(frame, settings.widthType);
         }
         frame.layoutMode = 'HORIZONTAL';
         frame.itemSpacing = gutter;
@@ -579,12 +778,12 @@ async function buildColumns(request) {
         for (const column of columns) {
             column.textAutoResize = 'HEIGHT';
             frame.appendChild(column);
-            if (settings.widthType === 'container') {
-                column.layoutSizingHorizontal = 'FILL';
-            }
-            else {
+            if (settings.widthType === 'column') {
                 column.resize(settings.width, column.height);
                 column.layoutSizingHorizontal = 'FIXED';
+            }
+            else {
+                column.layoutSizingHorizontal = 'FILL';
             }
             column.layoutSizingVertical = 'HUG';
         }
@@ -600,9 +799,38 @@ async function buildColumns(request) {
         frame.setPluginData(PLUGIN_DATA_KEY, JSON.stringify(data));
         frame.setRelaunchData({ reflow: 'Re-balance these columns' });
         if (target.mode === 'create')
-            placeColumns(frame, target.beside, 50);
+            placeColumns(frame, target.beside, 50, fill);
+        if (fill && !applyFillSizing(frame, anchorWidth)) {
+            notes.push('There is no parent frame to fill, so the columns match the width of the text layer.');
+        }
         if (content.style.effectStyleId) {
             await Promise.all(columns.map((column) => column.setEffectStyleIdAsync(content.style.effectStyleId).catch(() => { })));
+        }
+        // Bound last, once the sizes are settled — binding takes the variable's value.
+        const unbound = [];
+        const bind = (node, field, variable, label) => {
+            try {
+                node.setBoundVariable(field, variable);
+            }
+            catch (error) {
+                if (variable && unbound.indexOf(label) === -1)
+                    unbound.push(label);
+            }
+        };
+        // A re-flow also clears a binding left over from the last time.
+        if (bindings.gutterVariable || target.mode === 'reflow') {
+            bind(frame, 'itemSpacing', bindings.gutterVariable, 'gutter');
+        }
+        const frameWidthVariable = settings.widthType === 'container' ? bindings.widthVariable : null;
+        if (frameWidthVariable || target.mode === 'reflow') {
+            bind(frame, 'width', frameWidthVariable, 'width');
+        }
+        if (settings.widthType === 'column' && bindings.widthVariable) {
+            for (const column of columns)
+                bind(column, 'width', bindings.widthVariable, 'width');
+        }
+        if (unbound.length) {
+            notes.push(`Could not bind the ${unbound.join(' and ')} variable, so its value was used instead.`);
         }
     }
     catch (error) {
@@ -615,7 +843,7 @@ async function buildColumns(request) {
             frame.remove();
         throw error;
     }
-    return { frame, columnCount: ranges.length, fellBackToWords };
+    return { ok: true, result: { frame, columnCount: ranges.length, fellBackToWords, notes } };
 }
 function reportResult(result, settings) {
     if (result.columnCount < settings.columnCount) {
@@ -625,73 +853,148 @@ function reportResult(result, settings) {
         figma.notify('Not enough paragraphs for that many columns — split on words instead', { timeout: 4000 });
     }
 }
-/** Creates a new set of columns from the selected text layer. */
+const addUnique = (list, item) => {
+    if (list.indexOf(item) === -1)
+        list.push(item);
+};
+/**
+ * Runs one job per selected layer, one after another. A layer that cannot be split
+ * is skipped and reported rather than stopping the rest.
+ */
+async function runBatch(jobs, labels, zoomToResult) {
+    const frames = [];
+    const problems = [];
+    const notes = [];
+    let tooShort = 0;
+    let wordFallbacks = 0;
+    let lastResult = null;
+    let progress = null;
+    for (let i = 0; i < jobs.length; i++) {
+        if (jobs.length > 2) {
+            if (progress)
+                progress.cancel();
+            progress = figma.notify(`Splitting ${i + 1} of ${jobs.length}…`, { timeout: Infinity });
+        }
+        let outcome;
+        try {
+            outcome = await jobs[i].run();
+        }
+        catch (error) {
+            const detail = error instanceof Error ? error.message : String(error);
+            outcome = fail(`Could not create columns: ${detail}`);
+        }
+        if (!outcome.ok) {
+            addUnique(problems, outcome.error);
+            continue;
+        }
+        const result = outcome.result;
+        lastResult = result;
+        frames.push(result.frame);
+        result.notes.forEach((note) => addUnique(notes, note));
+        if (result.columnCount < jobs[i].settings.columnCount)
+            tooShort++;
+        else if (result.fellBackToWords)
+            wordFallbacks++;
+    }
+    if (progress)
+        progress.cancel();
+    if (!frames.length) {
+        figma.notify(jobs.length === 1
+            ? problems[0]
+            : `None of the ${jobs.length} ${labels.many} could be split — ${problems.join('; ')}`, { error: true, timeout: 5000 });
+        return false;
+    }
+    figma.currentPage.selection = frames;
+    if (zoomToResult)
+        figma.viewport.scrollAndZoomIntoView(frames);
+    figma.commitUndo();
+    if (jobs.length === 1 && lastResult) {
+        reportResult(lastResult, jobs[0].settings);
+    }
+    else {
+        if (problems.length) {
+            figma.notify(`Split ${frames.length} of ${jobs.length} ${labels.many} — ${problems.join('; ')}`, {
+                timeout: 5000,
+            });
+        }
+        if (tooShort) {
+            figma.notify(`${tooShort} of ${frames.length} had too little text to fill all the columns`, { timeout: 4000 });
+        }
+        if (wordFallbacks) {
+            figma.notify(`${wordFallbacks} of ${frames.length} had too few paragraphs, so they were split on words`, { timeout: 4000 });
+        }
+    }
+    notes.forEach((note) => figma.notify(note, { timeout: 5000 }));
+    return true;
+}
+/** Creates a set of columns beside every selected text layer. */
 async function createFromSelection(settings) {
-    const source = firstSelectedText();
-    if (!source) {
+    const sources = selectedTextNodes();
+    if (!sources.length) {
         figma.notify('Select a text layer to continue', { error: true, timeout: 3000 });
         return false;
     }
-    if (source.hasMissingFont) {
-        figma.notify('This text layer uses a font that is not available — install it and try again', {
-            error: true,
-            timeout: 4000,
-        });
-        return false;
-    }
-    const result = await buildColumns({
-        content: readTextNode(source),
+    const jobs = sources.map((source) => ({
         settings,
-        target: { mode: 'create', beside: source },
-    });
-    if (!result)
-        return false;
-    figma.currentPage.selection = [result.frame];
-    figma.viewport.scrollAndZoomIntoView([result.frame]);
-    figma.commitUndo();
-    reportResult(result, settings);
-    return true;
+        run: async () => {
+            if (source.hasMissingFont) {
+                return fail('This text layer uses a font that is not available — install it and try again');
+            }
+            return buildColumns({
+                content: readTextNode(source),
+                settings,
+                target: { mode: 'create', beside: source },
+            });
+        },
+    }));
+    return runBatch(jobs, { one: 'text layer', many: 'text layers' }, true);
 }
-/** Rebuilds an existing set of columns, picking up any edits made to them. */
+/** Rebuilds every selected set of columns, picking up any edits made to them. */
 async function reflowSelection(settings) {
-    const frame = selectedColumnFrame();
-    if (!frame) {
+    const frames = selectedColumnFrames();
+    if (!frames.length) {
         figma.notify('Select a set of columns made by this plugin', { error: true, timeout: 3000 });
         return false;
     }
-    const data = readFrameData(frame);
-    const content = readColumnFrame(frame, data);
-    if (!content) {
-        figma.notify('These columns no longer contain any text', { error: true, timeout: 3000 });
-        return false;
-    }
-    const used = settings || data.settings;
-    const result = await buildColumns({ content, settings: used, target: { mode: 'reflow', frame } });
-    if (!result)
-        return false;
-    figma.currentPage.selection = [result.frame];
-    figma.commitUndo();
-    reportResult(result, used);
-    return true;
+    const jobs = frames.map((frame) => {
+        const data = readFrameData(frame);
+        const used = settings || data.settings;
+        return {
+            settings: used,
+            run: async () => {
+                const content = readColumnFrame(frame, data);
+                if (!content)
+                    return fail('These columns no longer contain any text');
+                return buildColumns({ content, settings: used, target: { mode: 'reflow', frame } });
+            },
+        };
+    });
+    return runBatch(jobs, { one: 'set of columns', many: 'sets of columns' }, false);
 }
 /* -------------------------------------------------------------------------- */
 /* Plugin lifecycle                                                           */
 /* -------------------------------------------------------------------------- */
 function postSelection() {
-    const frame = selectedColumnFrame();
-    const node = firstSelectedText();
-    const data = frame ? readFrameData(frame) : null;
+    const frames = selectedColumnFrames();
+    const texts = selectedTextNodes();
+    const first = frames[0] || texts[0] || null;
+    const data = frames[0] ? readFrameData(frames[0]) : null;
     figma.ui.postMessage({
         type: 'selection',
-        mode: frame ? 'reflow' : node ? 'create' : 'none',
-        name: frame ? frame.name : node ? node.name : null,
+        mode: frames.length ? 'reflow' : texts.length ? 'create' : 'none',
+        // How many layers (or sets of columns) the button will act on.
+        count: frames.length || texts.length,
+        name: first ? first.name : null,
         // Identifies the selection so the window only re-fills the fields when it changes.
-        id: frame ? frame.id : node ? node.id : null,
+        id: first ? first.id : null,
         // Selecting existing columns shows the settings they were built with.
         settings: data ? data.settings : null,
         // Lets the window offer the layer's own width as a starting point.
-        width: node ? Math.round(node.width) : null,
+        width: texts[0] ? Math.round(texts[0].width) : null,
     });
+}
+async function postVariables() {
+    figma.ui.postMessage({ type: 'variables', variables: await listNumberVariables() });
 }
 function showWindow() {
     figma.showUI(__html__, { width: UI_WIDTH, height: UI_INITIAL_HEIGHT, themeColors: true });
@@ -706,6 +1009,7 @@ function showWindow() {
             limits: LIMITS,
         });
         postSelection();
+        postVariables();
     });
     figma.on('selectionchange', postSelection);
     figma.ui.onmessage = async (msg) => {
@@ -713,6 +1017,10 @@ function showWindow() {
             return;
         if (msg.type === 'resize') {
             figma.ui.resize(UI_WIDTH, clampInt(msg.height, UI_INITIAL_HEIGHT, UI_MIN_HEIGHT, UI_MAX_HEIGHT));
+            return;
+        }
+        if (msg.type === 'request-variables') {
+            await postVariables();
             return;
         }
         if (msg.type !== 'create-columns')
@@ -759,6 +1067,9 @@ figma.on('run', async ({ command, parameters }) => {
     if (parameters) {
         const stored = await figma.clientStorage.getAsync(SETTINGS_KEY).catch(() => null);
         const base = stored ? readSettings(stored) : DEFAULTS;
+        // Typing a width or gutter here replaces any variable the last run was bound to.
+        const hasWidth = typeof parameters.width === 'string' && parameters.width.trim() !== '';
+        const hasGutter = typeof parameters.gutter === 'string' && parameters.gutter.trim() !== '';
         const settings = {
             columnCount: clampInt(parameters.columns, base.columnCount, LIMITS.columnCount.min, LIMITS.columnCount.max),
             width: clampInt(parameters.width, base.width, LIMITS.width.min, LIMITS.width.max),
@@ -766,10 +1077,12 @@ figma.on('run', async ({ command, parameters }) => {
             widthType: base.widthType,
             priority: base.priority,
             removeLinebreaks: base.removeLinebreaks,
+            widthVariableId: hasWidth ? null : base.widthVariableId,
+            gutterVariableId: hasGutter ? null : base.gutterVariableId,
         };
         try {
             // Whichever is selected: re-balance existing columns, or make new ones.
-            const done = selectedColumnFrame() ? await reflowSelection(settings) : await createFromSelection(settings);
+            const done = selectedColumnFrames().length ? await reflowSelection(settings) : await createFromSelection(settings);
             if (done)
                 await figma.clientStorage.setAsync(SETTINGS_KEY, settings);
         }

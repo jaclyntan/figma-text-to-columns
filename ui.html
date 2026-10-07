@@ -34,10 +34,6 @@
     font-size: var(--font-size);
     line-height: var(--line-height);
     -webkit-font-smoothing: antialiased;
-    /* Fill the window so the footer can sit flush at the bottom of it. */
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
   }
 
   .panel {
@@ -47,7 +43,7 @@
   .grid {
     display: grid;
     /* The middle column is wider so the "Container width" label is never clipped. */
-    grid-template-columns: 0.85fr 1.3fr 0.85fr;
+    grid-template-columns: 0.7fr 1.2fr 1.1fr;
     gap: 12px;
   }
 
@@ -193,23 +189,237 @@
     cursor: default;
   }
 
-  .footer {
-    /* Pushed to the bottom of the window, so any leftover space sits above it. */
-    margin-top: auto;
-    padding: 0 16px 10px;
-    text-align: center;
-    font-size: 9px;
+  .input:disabled {
+    color: var(--disabled-text);
+    background: var(--bg-secondary);
+    border-color: var(--border);
   }
 
-  .footer a {
+  /* A number field that can also take a variable. */
+  .var-field {
+    position: relative;
+  }
+
+  .var-field .input {
+    padding-right: 28px;
+  }
+
+  .var-btn {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--text-secondary);
-    text-decoration: none;
-    opacity: 0.6;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
   }
 
-  .footer a:hover {
-    opacity: 1;
-    text-decoration: underline;
+  .var-btn:hover,
+  .var-btn:focus-visible {
+    color: var(--text);
+    background: var(--bg-hover);
+    outline: none;
+  }
+
+  /* Replaces the number while a variable is bound. */
+  .chip {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    color: var(--text);
+    /* A tint over the solid background, so the number underneath never shows. */
+    background: linear-gradient(rgba(13, 153, 255, .12), rgba(13, 153, 255, .12)), var(--bg);
+    border: 1px solid var(--brand);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .chip[hidden] {
+    display: none;
+  }
+
+  .chip-main {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0 0 0 6px;
+    display: flex;
+    align-items: center;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+
+  .chip-name {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .chip-x {
+    width: 22px;
+    height: 100%;
+    flex-shrink: 0;
+    padding: 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+  }
+
+  .chip-x:hover {
+    color: var(--text);
+  }
+
+  .var-field.is-bound .input {
+    visibility: hidden;
+  }
+
+  .var-field.is-bound .var-btn {
+    display: none;
+  }
+
+  .var-field.is-disabled .var-btn,
+  .var-field.is-disabled .chip {
+    opacity: .4;
+    pointer-events: none;
+  }
+
+  .popover {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    z-index: 10;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 0 0 .5px rgba(0, 0, 0, .06), 0 8px 24px rgba(0, 0, 0, .16), 0 2px 6px rgba(0, 0, 0, .08);
+    overflow: hidden;
+  }
+
+  .popover[hidden] {
+    display: none;
+  }
+
+  .popover-search {
+    width: 100%;
+    height: 34px;
+    padding: 0 12px 0 32px;
+    color: var(--text);
+    font: inherit;
+    background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%23999' stroke-width='1.2' stroke-linecap='round'%3E%3Ccircle cx='5' cy='5' r='3.6'/%3E%3Cpath d='M7.8 7.8L10.5 10.5'/%3E%3C/svg%3E") no-repeat 12px center;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    outline: none;
+  }
+
+  .popover-search::placeholder {
+    color: var(--text-secondary);
+    opacity: .7;
+  }
+
+  .popover-list {
+    position: relative;
+    padding: 4px;
+    overflow-y: auto;
+    /* Minimal scrollbar: a thin rounded thumb that only shows when it is needed. */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
+  .popover-list::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .popover-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .popover-list::-webkit-scrollbar-thumb {
+    background: transparent;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    background-clip: padding-box;
+  }
+
+  .popover-list:hover::-webkit-scrollbar-thumb {
+    background-color: var(--border-strong);
+  }
+
+  .popover-list::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-secondary);
+  }
+
+  .popover-group {
+    padding: 8px 8px 3px;
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+  }
+
+  .popover-group:first-child {
+    padding-top: 4px;
+  }
+
+  .popover-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    height: 26px;
+    padding: 0 8px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  .popover-row.is-active {
+    background: var(--bg-hover);
+  }
+
+  .popover-row.is-selected .popover-name {
+    color: var(--brand);
+    font-weight: 500;
+  }
+
+  .popover-name {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .popover-value {
+    flex-shrink: 0;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .popover-empty {
+    padding: 14px 8px;
+    text-align: center;
+    color: var(--text-secondary);
   }
 </style>
 
@@ -224,13 +434,28 @@
       <select class="label-select" id="width-type" aria-label="How the width is measured">
         <option value="column">Column width</option>
         <option value="container">Container width</option>
+        <option value="fill">Fill parent</option>
       </select>
-      <input class="input" id="width" type="number" min="1" max="10000" step="1" value="350">
+      <div class="var-field" id="width-field">
+        <input class="input" id="width" type="number" min="1" max="10000" step="1" value="350">
+        <button type="button" class="var-btn" id="width-var" data-var-trigger="width" aria-label="Use a variable for the width" title="Use a variable"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="6" cy="6" r="1.7" fill="currentColor"/></svg></button>
+        <div class="chip" id="width-chip" hidden>
+          <button type="button" class="chip-main" data-var-trigger="width" aria-label="Change the width variable"><span class="chip-name" id="width-chip-name"></span></button>
+          <button type="button" class="chip-x" id="width-chip-x" aria-label="Detach the width variable" title="Detach variable">&times;</button>
+        </div>
+      </div>
     </div>
 
     <div class="field">
       <label class="label" for="column-gutter">Gutter</label>
-      <input class="input" id="column-gutter" type="number" min="0" max="5000" step="1" value="50">
+      <div class="var-field" id="gutter-field">
+        <input class="input" id="column-gutter" type="number" min="0" max="5000" step="1" value="50">
+        <button type="button" class="var-btn" id="gutter-var" data-var-trigger="gutter" aria-label="Use a variable for the gutter" title="Use a variable"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="6" cy="6" r="1.7" fill="currentColor"/></svg></button>
+        <div class="chip" id="gutter-chip" hidden>
+          <button type="button" class="chip-main" data-var-trigger="gutter" aria-label="Change the gutter variable"><span class="chip-name" id="gutter-chip-name"></span></button>
+          <button type="button" class="chip-x" id="gutter-chip-x" aria-label="Detach the gutter variable" title="Detach variable">&times;</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -259,7 +484,10 @@
   <button class="button" id="create" disabled>Create columns</button>
 </div>
 
-<div class="footer"><a href="https://www.buymeacoffee.com/jaclyntan" target="_blank" rel="noopener">Buy me a coffee ♥️</a></div>
+<div class="popover" id="popover" hidden role="dialog" aria-label="Choose a variable">
+  <input class="popover-search" id="popover-search" type="text" placeholder="Search variables" autocomplete="off" spellcheck="false">
+  <div class="popover-list" id="popover-list" role="listbox"></div>
+</div>
 
 <script>
   var byId = function (id) { return document.getElementById(id); };
@@ -271,6 +499,9 @@
   var removeLinebreaksInput = byId('remove-linebreaks');
   var statusEl = byId('status');
   var createButton = byId('create');
+  var popover = byId('popover');
+  var popoverSearch = byId('popover-search');
+  var popoverList = byId('popover-list');
 
   var limits = {
     columnCount: { min: 2, max: 50 },
@@ -278,17 +509,275 @@
     columnGutter: { min: 0, max: 5000 }
   };
 
-  var selection = { mode: 'none', name: null, id: null, width: null };
+  var selection = { mode: 'none', count: 0, name: null, id: null, width: null };
   var busy = false;
   var hasStoredSettings = false;
   var lastFilledId = null;
   var didPrefillWidth = false;
   var lastPostedHeight = 0;
 
+  /* ------------------------------------------------------------ variables */
+
+  // The two fields that can be bound to a number variable.
+  var variableFields = {
+    width: {
+      input: widthInput,
+      wrap: byId('width-field'),
+      trigger: byId('width-var'),
+      chip: byId('width-chip'),
+      chipName: byId('width-chip-name'),
+      chipClear: byId('width-chip-x')
+    },
+    gutter: {
+      input: gutterInput,
+      wrap: byId('gutter-field'),
+      trigger: byId('gutter-var'),
+      chip: byId('gutter-chip'),
+      chipName: byId('gutter-chip-name'),
+      chipClear: byId('gutter-chip-x')
+    }
+  };
+  var variableKeys = ['width', 'gutter'];
+
+  var variables = [];
+  var variablesLoaded = false;
+  var bound = { width: null, gutter: null };       // { id, name, value } once resolved
+  var pendingIds = { width: null, gutter: null };  // ids waiting for the list to arrive
+
+  var popoverFor = null;
+  var shownOptions = [];
+  var activeIndex = 0;
+
+  function findVariable(id) {
+    for (var i = 0; i < variables.length; i++) {
+      if (variables[i].id === id) return variables[i];
+    }
+    return null;
+  }
+
+  function renderBinding(key) {
+    var field = variableFields[key];
+    var current = bound[key];
+    field.chip.hidden = !current;
+    field.wrap.classList.toggle('is-bound', !!current);
+    if (current) {
+      field.chipName.textContent = current.name;
+      field.chip.title = current.name + ' = ' + current.value;
+    }
+  }
+
+  function setBound(key, option) {
+    bound[key] = option ? { id: option.id, name: option.name, value: option.value } : null;
+    if (option) variableFields[key].input.value = String(option.value);
+    renderBinding(key);
+  }
+
+  function requestVariables() {
+    parent.postMessage({ pluginMessage: { type: 'request-variables' } }, '*');
+  }
+
+  /**
+   * Matches bound ids against the variable list. `final` is true once the list is
+   * known to be fresh: anything still missing then is really gone (deleted, or not a
+   * local variable) and loses its binding, keeping the number it had.
+   */
+  function resolveBindings(final) {
+    var needsFreshList = false;
+
+    variableKeys.forEach(function (key) {
+      var id = bound[key] ? bound[key].id : pendingIds[key];
+      if (!id) return;
+
+      var found = findVariable(id);
+      if (found) {
+        pendingIds[key] = null;
+        setBound(key, found);
+      } else if (final) {
+        pendingIds[key] = null;
+        setBound(key, null);
+      } else {
+        // Might be newer than the list we have — keep the id and ask again.
+        pendingIds[key] = id;
+        needsFreshList = true;
+      }
+    });
+
+    if (needsFreshList && variablesLoaded) requestVariables();
+  }
+
+  function idFor(key) {
+    return bound[key] ? bound[key].id : pendingIds[key];
+  }
+
+  function isOpen() { return !popover.hidden; }
+
+  function closePopover() {
+    popover.hidden = true;
+    popoverFor = null;
+  }
+
+  function renderOptions() {
+    var query = popoverSearch.value.trim().toLowerCase();
+    shownOptions = variables.filter(function (option) {
+      return !query || (option.collection + ' ' + option.name).toLowerCase().indexOf(query) !== -1;
+    });
+
+    popoverList.textContent = '';
+
+    if (!shownOptions.length) {
+      var empty = document.createElement('div');
+      empty.className = 'popover-empty';
+      empty.textContent = variables.length ? 'No matching variables' : 'No number variables in this file yet';
+      popoverList.appendChild(empty);
+      return;
+    }
+
+    var selectedId = popoverFor && bound[popoverFor] ? bound[popoverFor].id : null;
+    var lastCollection = null;
+
+    shownOptions.forEach(function (option, index) {
+      if (option.collection !== lastCollection) {
+        lastCollection = option.collection;
+        if (option.collection) {
+          var group = document.createElement('div');
+          group.className = 'popover-group';
+          group.textContent = option.collection;
+          popoverList.appendChild(group);
+        }
+      }
+
+      var row = document.createElement('div');
+      row.className = 'popover-row' +
+        (index === activeIndex ? ' is-active' : '') +
+        (option.id === selectedId ? ' is-selected' : '');
+      row.setAttribute('role', 'option');
+      row.setAttribute('data-index', String(index));
+
+      var name = document.createElement('span');
+      name.className = 'popover-name';
+      name.textContent = option.name;
+      var value = document.createElement('span');
+      value.className = 'popover-value';
+      value.textContent = String(option.value);
+
+      row.appendChild(name);
+      row.appendChild(value);
+      popoverList.appendChild(row);
+    });
+
+    // Scroll the list itself. scrollIntoView can scroll the whole window as well.
+    var active = popoverList.querySelector('.is-active');
+    if (active) {
+      var top = active.offsetTop;
+      var bottom = top + active.offsetHeight;
+      if (top < popoverList.scrollTop) popoverList.scrollTop = top;
+      else if (bottom > popoverList.scrollTop + popoverList.clientHeight) popoverList.scrollTop = bottom - popoverList.clientHeight;
+    }
+  }
+
+  function openPopover(key) {
+    if (variableFields[key].input.disabled) return;
+
+    popoverFor = key;
+    // Ask again, so variables added since the window opened show up.
+    requestVariables();
+
+    var rect = variableFields[key].wrap.getBoundingClientRect();
+    popover.style.top = Math.round(rect.bottom + 4) + 'px';
+    // Search row (34) + list padding (8) + borders (2) + gap below the field (4) + breathing room (8).
+    popoverList.style.maxHeight = Math.max(48, Math.min(160, window.innerHeight - rect.bottom - 56)) + 'px';
+
+    popoverSearch.value = '';
+    activeIndex = 0;
+    if (bound[key]) {
+      for (var i = 0; i < variables.length; i++) {
+        if (variables[i].id === bound[key].id) { activeIndex = i; break; }
+      }
+    }
+
+    popover.hidden = false;
+    renderOptions();
+    popoverSearch.focus();
+  }
+
+  function choose(index) {
+    var option = shownOptions[index];
+    if (!option || !popoverFor) return;
+
+    var key = popoverFor;
+    closePopover();
+    setBound(key, option);
+    refresh();
+    variableFields[key].chipClear.focus();
+  }
+
+  function detach(key) {
+    setBound(key, null);
+    variableFields[key].input.focus();
+    variableFields[key].input.select();
+    refresh();
+  }
+
+  variableKeys.forEach(function (key) {
+    var field = variableFields[key];
+
+    [field.trigger, field.chip.querySelector('.chip-main')].forEach(function (button) {
+      button.addEventListener('click', function () {
+        if (isOpen() && popoverFor === key) closePopover();
+        else openPopover(key);
+      });
+    });
+
+    field.chipClear.addEventListener('click', function () { detach(key); });
+  });
+
+  popoverSearch.addEventListener('input', function () {
+    activeIndex = 0;
+    renderOptions();
+  });
+
+  popoverSearch.addEventListener('keydown', function (event) {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (!shownOptions.length) return;
+      var step = event.key === 'ArrowDown' ? 1 : -1;
+      activeIndex = (activeIndex + step + shownOptions.length) % shownOptions.length;
+      renderOptions();
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      event.stopPropagation();
+      choose(activeIndex);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      var key = popoverFor;
+      closePopover();
+      if (key) variableFields[key].trigger.focus();
+    } else if (event.key === 'Tab') {
+      closePopover();
+    }
+  });
+
+  // mousedown, not click, so the search field keeps focus until a row is chosen.
+  popoverList.addEventListener('mousedown', function (event) {
+    event.preventDefault();
+    var row = event.target.closest ? event.target.closest('.popover-row') : null;
+    if (row) choose(parseInt(row.getAttribute('data-index'), 10));
+  });
+
+  document.addEventListener('mousedown', function (event) {
+    if (!isOpen()) return;
+    var target = event.target;
+    if (popover.contains(target)) return;
+    if (target.closest && target.closest('[data-var-trigger]')) return;
+    closePopover();
+  });
+
+  /* --------------------------------------------------------------- fields */
+
   var fields = [
-    { input: columnCountInput, limit: 'columnCount', label: 'Columns' },
-    { input: widthInput, limit: 'width', label: 'Width' },
-    { input: gutterInput, limit: 'columnGutter', label: 'Gutter' }
+    { input: columnCountInput, limit: 'columnCount', label: 'Columns', key: null },
+    { input: widthInput, limit: 'width', label: 'Width', key: 'width' },
+    { input: gutterInput, limit: 'columnGutter', label: 'Gutter', key: 'gutter' }
   ];
 
   /** Reads the fields as typed — no rewriting, so multi-digit entry still works. */
@@ -299,13 +788,18 @@
       columnGutter: Math.round(parseFloat(gutterInput.value)),
       widthType: widthTypeSelect.value,
       priority: document.querySelector('input[name="priority"]:checked').value,
-      removeLinebreaks: removeLinebreaksInput.checked
+      removeLinebreaks: removeLinebreaksInput.checked,
+      widthVariableId: idFor('width'),
+      gutterVariableId: idFor('gutter')
     };
   }
 
-  /** Pulls every field back into range. Only called on blur and on submit. */
+  /** Pulls every typed field back into range. Only called on blur and on submit. */
   function clampFields() {
     fields.forEach(function (field) {
+      // A bound field shows its variable's value, which is not ours to rewrite.
+      if (field.key && bound[field.key]) return;
+
       var limit = limits[field.limit];
       var value = Math.round(parseFloat(field.input.value));
       if (!isFinite(value)) value = parseFloat(field.input.defaultValue);
@@ -316,6 +810,9 @@
   /** Returns an error string, or null when the settings can be used. */
   function validate(values) {
     for (var i = 0; i < fields.length; i++) {
+      // Fill parent takes its width from the parent, so the field is not used.
+      if (fields[i].limit === 'width' && values.widthType === 'fill') continue;
+
       var limit = limits[fields[i].limit];
       var value = values[fields[i].limit];
       if (!isFinite(value) || value < limit.min || value > limit.max) {
@@ -337,10 +834,26 @@
     postHeight();
   }
 
+  /** The width field means nothing when the columns fill their parent. */
+  function syncWidthMode() {
+    var fill = widthTypeSelect.value === 'fill';
+    widthInput.disabled = fill;
+    variableFields.width.trigger.disabled = fill;
+    variableFields.width.wrap.classList.toggle('is-disabled', fill);
+    if (fill && isOpen() && popoverFor === 'width') closePopover();
+  }
+
+  function plural(count, one, many) {
+    return count + ' ' + (count === 1 ? one : many);
+  }
+
   function refresh() {
+    syncWidthMode();
+
     var values = currentValues();
     var error = validate(values);
     var reflow = selection.mode === 'reflow';
+    var many = selection.count > 1;
 
     createButton.textContent = reflow ? 'Update columns' : 'Create columns';
 
@@ -349,9 +862,9 @@
     } else if (selection.mode === 'none') {
       setStatus('Select a text layer, or columns to update', false);
     } else if (reflow) {
-      setStatus('Update — ' + selection.name, false);
+      setStatus(many ? 'Update — ' + plural(selection.count, 'set of columns', 'sets of columns') : 'Update — ' + selection.name, false);
     } else {
-      setStatus('Ready — ' + selection.name, false);
+      setStatus(many ? 'Ready — ' + plural(selection.count, 'text layer', 'text layers') : 'Ready — ' + selection.name, false);
     }
 
     createButton.disabled = busy || selection.mode === 'none' || !!error;
@@ -382,18 +895,26 @@
     removeLinebreaksInput.checked = settings.removeLinebreaks;
     var radio = document.querySelector('input[name="priority"][value="' + settings.priority + '"]');
     if (radio) radio.checked = true;
+
+    // Bindings come back by id, and are matched once the variable list is here.
+    bound.width = null;
+    bound.gutter = null;
+    pendingIds.width = settings.widthVariableId || null;
+    pendingIds.gutter = settings.gutterVariableId || null;
+    renderBinding('width');
+    renderBinding('gutter');
+    resolveBindings(false);
   }
 
   /**
-   * The height the content actually needs. Measured from the bottom of the actions
-   * plus the footer, rather than from scrollHeight — scrollHeight never reports less
+   * The height the content actually needs: the bottom of the actions block.
+   * Measured from the content rather than scrollHeight, which never reports less
    * than the current window, so the window could only ever grow.
    */
   function contentHeight() {
     var actions = document.querySelector('.actions');
-    var footer = document.querySelector('.footer');
-    var top = document.body.getBoundingClientRect().top;
-    return Math.ceil(actions.getBoundingClientRect().bottom - top + footer.offsetHeight);
+    // Add the scroll offset back, so the answer is the same however far it is scrolled.
+    return Math.ceil(actions.getBoundingClientRect().bottom + window.pageYOffset);
   }
 
   function postHeight() {
@@ -407,7 +928,8 @@
   createButton.addEventListener('click', submit);
 
   document.addEventListener('keydown', function (event) {
-    if (event.key === 'Enter' && !event.isComposing) submit();
+    // Enter inside the variable list picks a variable; it must not also submit.
+    if (event.key === 'Enter' && !event.isComposing && !isOpen()) submit();
   });
 
   fields.forEach(function (field) {
@@ -428,8 +950,21 @@
       hasStoredSettings = !!msg.hasStoredSettings;
       applySettings(msg.settings);
       refresh();
+    } else if (msg.type === 'variables') {
+      variables = msg.variables || [];
+      variablesLoaded = true;
+
+      // Keep bound names and values current if a variable was renamed or changed.
+      variableKeys.forEach(function (key) {
+        if (!bound[key]) return;
+        var fresh = findVariable(bound[key].id);
+        if (fresh) setBound(key, fresh);
+      });
+      resolveBindings(true);
+      if (isOpen()) renderOptions();
+      refresh();
     } else if (msg.type === 'selection') {
-      selection = { mode: msg.mode, name: msg.name, id: msg.id, width: msg.width };
+      selection = { mode: msg.mode, count: msg.count || 0, name: msg.name, id: msg.id, width: msg.width };
 
       // Selecting a different set of columns shows the settings they were built with.
       if (msg.settings && msg.id !== lastFilledId) {

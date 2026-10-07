@@ -43,6 +43,7 @@ class FakeText {
     this.strokeWeight = 1; this.leadingTrim = 'NONE';
     this.effectStyleId = '';
     this.pluginData = {};
+    this.bound = {};
     this.segments = null; // only set on hand-made source nodes
   }
 
@@ -157,6 +158,10 @@ class FakeText {
   resize(w) { this.width = w; }
   getPluginData(key) { return this.pluginData[key] || ''; }
   setPluginData(key, value) { this.pluginData[key] = value; }
+  setBoundVariable(field, variable) {
+    if (this.failBinding) throw new Error('cannot bind ' + field);
+    if (variable) this.bound[field] = variable.id; else delete this.bound[field];
+  }
   get absoluteBoundingBox() {
     var x = this.x, y = this.y, p = this.parent;
     while (p && p.type !== 'PAGE') { x += p.x || 0; y += p.y || 0; p = p.parent; }
@@ -177,8 +182,19 @@ class FakeFrame {
     this.removed = false;
     this.x = 0; this.y = 0; this.width = 100;
     this.layoutMode = 'NONE';
+    this.paddingLeft = 0; this.paddingRight = 0;
     this.pluginData = {};
     this.relaunchData = null;
+    this.bound = {};
+  }
+  insertChild(index, node) {
+    if (node.parent) node.parent.children = node.parent.children.filter((c) => c !== node);
+    node.parent = this;
+    this.children.splice(index, 0, node);
+  }
+  setBoundVariable(field, variable) {
+    if (this.failBinding) throw new Error('cannot bind ' + field);
+    if (variable) this.bound[field] = variable.id; else delete this.bound[field];
   }
   get height() { return this.children.reduce((m, c) => Math.max(m, c.height || 0), 0); }
   appendChild(node) {
@@ -208,19 +224,30 @@ function makeEnv(options) {
   const notifications = [];
   const created = { frames: [], texts: [] };
   const handlers = {};
+  const posted = [];
+  let undoCount = 0;
   let closed = false;
 
   const figma = {
     mixed: MIXED,
     editorType: 'figma',
     currentPage: page,
-    ui: { postMessage() {}, resize() {}, onmessage: null },
+    ui: { postMessage(message) { posted.push(message); }, resize() {}, onmessage: null },
     clientStorage: { getAsync: async () => opts.stored || null, setAsync: async () => {} },
     parameters: { on() {} },
     showUI() {},
     on(type, fn) { handlers[type] = fn; },
-    notify(message, o) { notifications.push({ message, error: !!(o && o.error) }); },
-    commitUndo() {},
+    notify(message, o) {
+      notifications.push({ message, error: !!(o && o.error) });
+      return { cancel() {} };
+    },
+    variables: {
+      getLocalVariablesAsync: async (type) => (opts.variables || []).filter((v) => !type || v.resolvedType === type),
+      getLocalVariableCollectionsAsync: async () => (opts.collections || []).slice(),
+      getVariableByIdAsync: async (id) => (opts.variables || []).filter((v) => v.id === id)[0] || null,
+      getVariableCollectionByIdAsync: async (id) => (opts.collections || []).filter((c) => c.id === id)[0] || null,
+    },
+    commitUndo() { undoCount++; },
     closePlugin() { closed = true; },
     viewport: { scrollAndZoomIntoView() {} },
     createFrame() { const f = new FakeFrame(); page.appendChild(f); created.frames.push(f); return f; },
@@ -239,7 +266,7 @@ function makeEnv(options) {
     Infinity, JSON, Number, Object, Error,
   });
   vm.runInContext(fs.readFileSync(CODE, 'utf8'), context);
-  return { figma, page, notifications, created, context, handlers, isClosed: () => closed };
+  return { figma, page, notifications, created, context, handlers, posted, undoCount: () => undoCount, isClosed: () => closed };
 }
 
 function sourceText(characters, segments) {
@@ -260,7 +287,23 @@ function sourceText(characters, segments) {
 const settings = (over) => Object.assign({
   columnCount: 3, widthType: 'column', width: 350, columnGutter: 50,
   priority: 'evenness', removeLinebreaks: true,
+  widthVariableId: null, gutterVariableId: null,
 }, over || {});
+
+/** A file with a spacing collection, an alias, and a non-number variable. */
+const VARIABLE_FILE = {
+  collections: [
+    { id: 'c1', name: 'Spacing', defaultModeId: 'm1' },
+    { id: 'c2', name: 'Layout', defaultModeId: 'm9' },
+  ],
+  variables: [
+    { id: 'v-gutter', name: 'spacing/md', variableCollectionId: 'c1', resolvedType: 'FLOAT', valuesByMode: { m1: 24 } },
+    { id: 'v-alias', name: 'gap/default', variableCollectionId: 'c1', resolvedType: 'FLOAT',
+      valuesByMode: { m1: { type: 'VARIABLE_ALIAS', id: 'v-gutter' } } },
+    { id: 'v-width', name: 'column/narrow', variableCollectionId: 'c2', resolvedType: 'FLOAT', valuesByMode: { m9: 280 } },
+    { id: 'v-color', name: 'brand/primary', variableCollectionId: 'c1', resolvedType: 'COLOR', valuesByMode: { m1: { r: 0, g: 0, b: 1, a: 1 } } },
+  ],
+};
 
 function selectSource(env, node) {
   env.page.appendChild(node);
@@ -608,18 +651,21 @@ const columnsOf = (frame) => frame.children.filter((c) => c.type === 'TEXT');
     // Figma's review asks what a plugin stores. The frame keeps its settings and
     // the whitespace between columns — never any of the user's words.
     const text = 'Alpha beta gamma.\n\n  Delta epsilon zeta.\tEta theta iota kappa lambda.';
-    const env = makeEnv();
+    const env = makeEnv(VARIABLE_FILE);
     selectSource(env, sourceText(text));
-    await env.context.createFromSelection(settings({ columnCount: 3, priority: 'evenness' }));
+    await env.context.createFromSelection(settings({ columnCount: 3, priority: 'evenness', gutterVariableId: 'v-gutter' }));
 
     const frame = env.created.frames[0];
     const stored = JSON.parse(frame.getPluginData('textToColumns'));
 
     check('stored keys are only version, settings and separators',
       Object.keys(stored).sort(), ['separators', 'settings', 'version']);
-    check('stored settings are only the six known fields',
+    check('stored settings are only the eight known fields',
       Object.keys(stored.settings).sort(),
-      ['columnCount', 'columnGutter', 'priority', 'removeLinebreaks', 'width', 'widthType']);
+      ['columnCount', 'columnGutter', 'gutterVariableId', 'priority', 'removeLinebreaks', 'width', 'widthType', 'widthVariableId']);
+    assert('a bound variable is stored by id only, never by name',
+      stored.settings.gutterVariableId === 'v-gutter' &&
+      frame.getPluginData('textToColumns').indexOf('spacing/md') === -1);
     assert('separators hold whitespace only, never words',
       stored.separators.every((sep) => /^[\s\u2028\u2029]*$/.test(sep)),
       JSON.stringify(stored.separators));
@@ -677,6 +723,384 @@ const columnsOf = (frame) => frame.children.filter((c) => c.type === 'TEXT');
     assert('auto layout is skipped but the card is used', frame.parent === card,
       frame.parent && frame.parent.type);
     assert('the auto layout stack is undisturbed', stack.children.length === 1);
+  }
+
+  /* ====================================================================== */
+  /* Fill parent                                                            */
+  /* ====================================================================== */
+
+  /* --- inside auto layout: joins the flow, right after the text ---------- */
+  {
+    const env = makeEnv();
+    const stack = new FakeFrame();
+    stack.layoutMode = 'VERTICAL';
+    stack.width = 600; stack.paddingLeft = 20; stack.paddingRight = 20;
+    env.page.appendChild(stack);
+
+    const before = sourceText('Heading');
+    const src = sourceText(body);
+    const after = sourceText('Footer note');
+    stack.appendChild(before); stack.appendChild(src); stack.appendChild(after);
+    env.page.selection = [src];
+
+    await env.context.createFromSelection(settings({ widthType: 'fill', columnCount: 2 }));
+    const frame = env.created.frames[0];
+
+    assert('fill: columns join the auto layout', frame.parent === stack, frame.parent && frame.parent.type);
+    check('fill: placed straight after the text', stack.children.map((c) => c === frame ? 'columns' : c.characters.slice(0, 7)),
+      ['Heading', body.slice(0, 7), 'columns', 'Footer ']);
+    assert('fill: the frame fills the layout', frame.layoutSizingHorizontal === 'FILL', frame.layoutSizingHorizontal);
+    assert('fill: every column fills the frame', columnsOf(frame).every((c) => c.layoutSizingHorizontal === 'FILL'));
+    assert('fill: the original text is untouched', stack.children.indexOf(src) !== -1 && src.characters === body);
+    assert('fill: no error', !env.notifications.some((n) => n.error), JSON.stringify(env.notifications));
+  }
+
+  /* --- inside a plain frame: as wide as the parent, below the text ------- */
+  {
+    const env = makeEnv();
+    const card = new FakeFrame();
+    card.width = 800; card.x = 100; card.y = 60;
+    env.page.appendChild(card);
+
+    const src = sourceText(body);
+    src.x = 40; src.y = 30;
+    card.appendChild(src);
+    env.page.selection = [src];
+
+    await env.context.createFromSelection(settings({ widthType: 'fill', columnCount: 2 }));
+    const frame = env.created.frames.filter((f) => f !== card)[0];
+    const box = src.absoluteBoundingBox;
+
+    assert('fill: plain frame becomes the parent', frame.parent === card, frame.parent && frame.parent.type);
+    assert('fill: as wide as the plain frame', frame.width === 800, frame.width);
+    assert('fill: starts at the left edge of the frame', frame.x === 0, frame.x);
+    assert('fill: sits below the text, not beside it', frame.y === box.y + box.height + 50 - card.y,
+      frame.y + ' vs ' + (box.y + box.height + 50 - card.y));
+  }
+
+  /* --- nothing to fill: matches the text and says so --------------------- */
+  {
+    const env = makeEnv();
+    const src = selectSource(env, sourceText(body));
+    await env.context.createFromSelection(settings({ widthType: 'fill', columnCount: 2 }));
+    const frame = env.created.frames[0];
+
+    assert('fill: page level falls back to the text width', frame.width === src.width, frame.width);
+    assert('fill: page level says why', env.notifications.some((n) => /no parent frame/i.test(n.message)),
+      JSON.stringify(env.notifications));
+  }
+
+  /* --- a parent too narrow for the gutters is refused -------------------- */
+  {
+    const env = makeEnv();
+    const stack = new FakeFrame();
+    stack.layoutMode = 'VERTICAL'; stack.width = 80;
+    env.page.appendChild(stack);
+    const src = sourceText(body);
+    stack.appendChild(src);
+    env.page.selection = [src];
+
+    await env.context.createFromSelection(settings({ widthType: 'fill', columnCount: 3, columnGutter: 50 }));
+    assert('fill: narrow parent creates nothing', env.created.frames.length === 0);
+    assert('fill: narrow parent explains itself', env.notifications.some((n) => n.error && /too narrow/.test(n.message)),
+      JSON.stringify(env.notifications));
+  }
+
+  /* --- re-flowing follows the parent as it changes ----------------------- */
+  {
+    const env = makeEnv();
+    const card = new FakeFrame();
+    card.width = 800;
+    env.page.appendChild(card);
+    const src = sourceText(body);
+    card.appendChild(src);
+    env.page.selection = [src];
+
+    await env.context.createFromSelection(settings({ widthType: 'fill', columnCount: 2 }));
+    const frame = env.created.frames.filter((f) => f !== card)[0];
+    assert('fill reflow: starts at the card width', frame.width === 800);
+
+    card.width = 1000;
+    env.page.selection = [frame];
+    await env.context.reflowSelection(settings({ widthType: 'fill', columnCount: 2 }));
+    assert('fill reflow: follows a wider parent', frame.width === 1000, frame.width);
+  }
+
+  /* --- switching away from fill gives the sizing back -------------------- */
+  {
+    const env = makeEnv();
+    const stack = new FakeFrame();
+    stack.layoutMode = 'VERTICAL'; stack.width = 700;
+    env.page.appendChild(stack);
+    const src = sourceText(body);
+    stack.appendChild(src);
+    env.page.selection = [src];
+
+    await env.context.createFromSelection(settings({ widthType: 'fill', columnCount: 2 }));
+    const frame = env.created.frames[0];
+    assert('switch: starts filled', frame.layoutSizingHorizontal === 'FILL');
+
+    env.page.selection = [frame];
+    await env.context.reflowSelection(settings({ widthType: 'column', columnCount: 2, width: 300 }));
+    assert('switch: column mode hugs again', frame.layoutSizingHorizontal === 'HUG', frame.layoutSizingHorizontal);
+    assert('switch: columns take their own width', columnsOf(frame).every((c) => c.width === 300 && c.layoutSizingHorizontal === 'FIXED'));
+
+    await env.context.reflowSelection(settings({ widthType: 'fill', columnCount: 2 }));
+    assert('switch: and fills again on the way back', frame.layoutSizingHorizontal === 'FILL');
+  }
+
+  /* ====================================================================== */
+  /* Variables                                                              */
+  /* ====================================================================== */
+
+  /* --- the window is offered number variables, aliases resolved ---------- */
+  {
+    const env = makeEnv(VARIABLE_FILE);
+    const options = await env.context.listNumberVariables();
+    check('variables: only numbers, grouped and sorted',
+      options.map((o) => o.collection + '/' + o.name + '=' + o.value),
+      ['Layout/column/narrow=280', 'Spacing/gap/default=24', 'Spacing/spacing/md=24']);
+    assert('variables: ids are carried so a choice can be bound', options.every((o) => !!o.id));
+  }
+
+  /* --- a bound gutter takes the variable's value and is bound ------------ */
+  {
+    const env = makeEnv(VARIABLE_FILE);
+    selectSource(env, sourceText(body));
+    await env.context.createFromSelection(settings({ gutterVariableId: 'v-gutter', columnGutter: 99 }));
+    const frame = env.created.frames[0];
+
+    assert('gutter variable: spacing comes from the variable', frame.itemSpacing === 24, frame.itemSpacing);
+    assert('gutter variable: spacing is bound to it', frame.bound.itemSpacing === 'v-gutter', JSON.stringify(frame.bound));
+
+    const stored = JSON.parse(frame.getPluginData('textToColumns')).settings;
+    assert('gutter variable: stored for the next re-flow', stored.gutterVariableId === 'v-gutter' && stored.columnGutter === 24);
+  }
+
+  /* --- an alias is followed ---------------------------------------------- */
+  {
+    const env = makeEnv(VARIABLE_FILE);
+    selectSource(env, sourceText(body));
+    await env.context.createFromSelection(settings({ gutterVariableId: 'v-alias' }));
+    const frame = env.created.frames[0];
+    assert('alias variable: resolves to the aliased value', frame.itemSpacing === 24, frame.itemSpacing);
+    assert('alias variable: binds the alias itself', frame.bound.itemSpacing === 'v-alias');
+  }
+
+  /* --- a bound column width binds each column ---------------------------- */
+  {
+    const env = makeEnv(VARIABLE_FILE);
+    selectSource(env, sourceText(body));
+    await env.context.createFromSelection(settings({ widthVariableId: 'v-width' }));
+    const frame = env.created.frames[0];
+    const cols = columnsOf(frame);
+
+    assert('width variable: columns take its value', cols.every((c) => c.width === 280), JSON.stringify(cols.map((c) => c.width)));
+    assert('width variable: every column is bound', cols.every((c) => c.bound.width === 'v-width'));
+    assert('width variable: the frame itself is left alone', !frame.bound.width);
+  }
+
+  /* --- a bound container width binds the frame --------------------------- */
+  {
+    const env = makeEnv(VARIABLE_FILE);
+    selectSource(env, sourceText(body));
+    await env.context.createFromSelection(settings({ widthType: 'container', widthVariableId: 'v-width', columnGutter: 10 }));
+    const frame = env.created.frames[0];
+
+    assert('container variable: frame takes its value', frame.width === 280, frame.width);
+    assert('container variable: frame is bound', frame.bound.width === 'v-width');
+    assert('container variable: columns are not individually bound', columnsOf(frame).every((c) => !c.bound.width));
+  }
+
+  /* --- a missing or wrong-type variable falls back, and says so ---------- */
+  {
+    for (const [label, id] of [['deleted', 'gone'], ['wrong type', 'v-color']]) {
+      const env = makeEnv(VARIABLE_FILE);
+      selectSource(env, sourceText(body));
+      await env.context.createFromSelection(settings({ gutterVariableId: id, columnGutter: 37 }));
+      const frame = env.created.frames[0];
+
+      assert(`${label} variable: columns are still made`, columnsOf(frame).length === 3);
+      assert(`${label} variable: typed value is used`, frame.itemSpacing === 37, frame.itemSpacing);
+      assert(`${label} variable: nothing is bound`, !frame.bound.itemSpacing);
+      assert(`${label} variable: user is told`, env.notifications.some((n) => /gutter variable could not be found/.test(n.message)),
+        JSON.stringify(env.notifications));
+      assert(`${label} variable: the dead id is not kept`,
+        JSON.parse(frame.getPluginData('textToColumns')).settings.gutterVariableId === null);
+    }
+  }
+
+  /* --- a binding that Figma refuses degrades to the value ---------------- */
+  {
+    FakeFrame.prototype.failBinding = true;
+    try {
+      const env = makeEnv(VARIABLE_FILE);
+      selectSource(env, sourceText(body));
+      await env.context.createFromSelection(settings({ gutterVariableId: 'v-gutter' }));
+      const frame = env.created.frames[0];
+      assert('refused binding: columns are still made', columnsOf(frame).length === 3);
+      assert('refused binding: the value is still applied', frame.itemSpacing === 24);
+      assert('refused binding: user is told', env.notifications.some((n) => /Could not bind the gutter/.test(n.message)),
+        JSON.stringify(env.notifications));
+    } finally {
+      delete FakeFrame.prototype.failBinding;
+    }
+  }
+
+  /* --- fill parent ignores a width variable ------------------------------ */
+  {
+    const env = makeEnv(VARIABLE_FILE);
+    selectSource(env, sourceText(body));
+    await env.context.createFromSelection(settings({ widthType: 'fill', widthVariableId: 'v-width' }));
+    const frame = env.created.frames[0];
+    assert('fill: width variable is not bound', !frame.bound.width && columnsOf(frame).every((c) => !c.bound.width));
+    assert('fill: and is not reported missing', !env.notifications.some((n) => /could not be found/.test(n.message)));
+  }
+
+  /* --- re-flow keeps a binding, or clears it when asked ------------------ */
+  {
+    const env = makeEnv(VARIABLE_FILE);
+    selectSource(env, sourceText(body));
+    await env.context.createFromSelection(settings({ gutterVariableId: 'v-gutter' }));
+    const frame = env.created.frames[0];
+    env.page.selection = [frame];
+
+    await env.context.reflowSelection(null);
+    assert('reflow: relaunch keeps the gutter binding', frame.bound.itemSpacing === 'v-gutter');
+
+    await env.context.reflowSelection(settings({ gutterVariableId: null, columnGutter: 10 }));
+    assert('reflow: typing a number detaches the variable', !frame.bound.itemSpacing && frame.itemSpacing === 10);
+  }
+
+  /* --- quick actions: a typed value replaces a stored binding ------------ */
+  {
+    const stored = settings({ widthVariableId: 'v-width', gutterVariableId: 'v-gutter' });
+    const env = makeEnv(Object.assign({ stored }, VARIABLE_FILE));
+    selectSource(env, sourceText(body));
+    await env.handlers.run({ command: undefined, parameters: { columns: '3', width: '200' } });
+    const frame = env.created.frames[0];
+
+    assert('quick action: a typed width replaces the width variable',
+      columnsOf(frame).every((c) => c.width === 200 && !c.bound.width), JSON.stringify(columnsOf(frame).map((c) => c.width)));
+    assert('quick action: an untouched gutter keeps its variable', frame.bound.itemSpacing === 'v-gutter');
+  }
+
+  /* ====================================================================== */
+  /* Several layers at once                                                 */
+  /* ====================================================================== */
+
+  /* --- one set of columns per selected layer ----------------------------- */
+  {
+    const env = makeEnv();
+    const a = sourceText(body); a.x = 0; a.y = 0;
+    const b = sourceText('one two three four five six seven eight nine ten'); b.x = 0; b.y = 400;
+    const c = sourceText(body.slice(0, 600)); c.x = 0; c.y = 800;
+    [a, b, c].forEach((n) => env.page.appendChild(n));
+    env.page.selection = [a, b, c];
+
+    await env.context.createFromSelection(settings({ columnCount: 2 }));
+    const frames = env.created.frames;
+
+    assert('batch: one frame per text layer', frames.length === 3, frames.length);
+    check('batch: each beside its own layer', frames.map((f) => f.y), [0, 400, 800]);
+    check('batch: every frame is selected afterwards', env.page.selection.map((n) => n.id), frames.map((f) => f.id));
+    assert('batch: the whole run is one undo step', env.undoCount() === 1, env.undoCount());
+    assert('batch: no errors', !env.notifications.some((n) => n.error), JSON.stringify(env.notifications));
+    assert('batch: every original is untouched', [a, b, c].every((n) => !n.removed));
+  }
+
+  /* --- a layer that cannot be split does not stop the rest --------------- */
+  {
+    const env = makeEnv();
+    const good1 = sourceText(body);
+    const bad = sourceText(body); bad.hasMissingFont = true;
+    const good2 = sourceText(body);
+    [good1, bad, good2].forEach((n) => env.page.appendChild(n));
+    env.page.selection = [good1, bad, good2];
+
+    const done = await env.context.createFromSelection(settings({ columnCount: 2 }));
+
+    assert('partial batch: still counts as done', done === true);
+    assert('partial batch: the other two are made', env.created.frames.length === 2, env.created.frames.length);
+    assert('partial batch: skipped layers are reported',
+      env.notifications.some((n) => /Split 2 of 3 text layers/.test(n.message) && /font/.test(n.message)),
+      JSON.stringify(env.notifications.map((n) => n.message)));
+  }
+
+  /* --- nothing splittable reports once, not per layer -------------------- */
+  {
+    const env = makeEnv();
+    const a = sourceText('   '); const b = sourceText('  ');
+    [a, b].forEach((n) => env.page.appendChild(n));
+    env.page.selection = [a, b];
+
+    const done = await env.context.createFromSelection(settings());
+    const errors = env.notifications.filter((n) => n.error);
+
+    assert('failed batch: reports failure', done === false);
+    assert('failed batch: one error, not one per layer', errors.length === 1, JSON.stringify(errors));
+    assert('failed batch: says how many', /None of the 2 text layers/.test(errors[0].message), errors[0].message);
+  }
+
+  /* --- a longer batch shows progress ------------------------------------- */
+  {
+    const env = makeEnv();
+    const nodes = [0, 1, 2, 3].map((i) => { const n = sourceText(body); n.y = i * 500; return n; });
+    nodes.forEach((n) => env.page.appendChild(n));
+    env.page.selection = nodes;
+
+    await env.context.createFromSelection(settings({ columnCount: 2 }));
+    assert('batch: progress is shown for longer runs', env.notifications.some((n) => /Splitting 3 of 4/.test(n.message)),
+      JSON.stringify(env.notifications.map((n) => n.message)));
+    assert('batch: all four are made', env.created.frames.length === 4);
+  }
+
+  /* --- re-flowing several sets at once ----------------------------------- */
+  {
+    const env = makeEnv();
+    const a = sourceText(body); const b = sourceText(body); b.y = 500;
+    [a, b].forEach((n) => env.page.appendChild(n));
+    env.page.selection = [a, b];
+    await env.context.createFromSelection(settings({ columnCount: 2 }));
+    const frames = env.created.frames.slice();
+
+    env.page.selection = frames;
+    await env.context.reflowSelection(settings({ columnCount: 4 }));
+
+    assert('batch reflow: every set is rebuilt', frames.every((f) => columnsOf(f).length === 4),
+      JSON.stringify(frames.map((f) => columnsOf(f).length)));
+    assert('batch reflow: frames are reused', env.created.frames.length === 2);
+  }
+
+  /* --- what the window is told about the selection ----------------------- */
+  {
+    const env = makeEnv();
+    await env.handlers.run({ command: undefined, parameters: undefined });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    const a = sourceText(body); const b = sourceText(body);
+    [a, b].forEach((n) => env.page.appendChild(n));
+    env.page.selection = [a, b];
+    env.handlers.selectionchange();
+
+    let last = env.posted.filter((m) => m.type === 'selection').pop();
+    assert('window: two layers selected', last.mode === 'create' && last.count === 2, JSON.stringify(last));
+
+    env.page.selection = [a, b];
+    await env.context.createFromSelection(settings({ columnCount: 2 }));
+    env.page.selection = env.created.frames.concat([a]);
+    env.handlers.selectionchange();
+    last = env.posted.filter((m) => m.type === 'selection').pop();
+    assert('window: frames win over text in a mixed selection', last.mode === 'reflow' && last.count === 2, JSON.stringify(last));
+    assert('window: selected columns report their settings', last.settings && last.settings.columnCount === 2);
+
+    const init = env.posted.filter((m) => m.type === 'init')[0];
+    assert('window: opens with settings and limits', init && init.settings && init.limits);
+
+    const before = env.posted.filter((m) => m.type === 'variables').length;
+    await env.figma.ui.onmessage({ type: 'request-variables' });
+    assert('window: can ask for the variable list again',
+      env.posted.filter((m) => m.type === 'variables').length === before + 1);
   }
 
   /* --- failure paths leave nothing behind ------------------------------- */

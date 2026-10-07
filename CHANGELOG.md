@@ -14,6 +14,20 @@
   then a column count, and optionally a width and gutter. Running it with no
   parameters still opens the window as before.
 - The width field starts from the width of the selected layer on first run.
+- **Fill parent.** A third width option that makes the columns as wide as whatever
+  they sit in. Inside an auto layout frame they join the layout straight after the
+  text and fill it; inside a plain frame, section or slide they match its width and go
+  below the text. Re-flowing follows the parent as it changes.
+- **Variables in the width and gutter fields.** A variable button inside each field
+  lists the file's number variables. Picking one shows its name in the field and binds
+  the layout to it, so changing the variable changes the columns. Re-flow keeps the
+  binding, and a variable that has been deleted falls back to its last value with a
+  note instead of failing.
+- **Several text layers at once.** Select as many as you like; each gets its own set
+  of columns in a single undo step, and a layer that cannot be split is skipped and
+  reported rather than stopping the rest. Re-flowing several sets works the same way.
+- A refined variable picker: searchable, grouped by collection, with right-aligned
+  values, keyboard navigation and a minimal scrollbar that only appears on hover.
 - **Runs in Figma Slides and Figma Buzz** as well as Figma Design and FigJam. The
   columns are placed inside the slide or asset the text belongs to.
 
@@ -22,6 +36,7 @@
   (`setRangeTextStyleIdAsync`, `setRangeFillStyleIdAsync`, `setEffectStyleIdAsync`),
   which is what Figma expects of plugins going forward.
 - Figma plugin typings updated from 1.79 to 1.133.
+- The "Buy me a coffee" footer is gone from the window.
 - Splitting is unchanged from 1.1.0: both Prioritise Paragraphs and Prioritise Even
   Split still balance columns by character count. A height-measuring pass and a rule
   that held headings back from the foot of a column were tried and dropped — they
@@ -43,8 +58,8 @@
 - The window re-sent its height on every keystroke, and overwrote a width you had
   typed whenever the selection changed.
 - The window measured itself with `scrollHeight`, which never reports less than the
-  current window, so it could only ever grow — leaving empty space below the footer.
-  It now measures its own content, and the footer is pinned to the bottom.
+  current window, so it could only ever grow — leaving empty space at the bottom.
+  It now measures its own content and opens at exactly that height.
 
 ## 1.1.0
 

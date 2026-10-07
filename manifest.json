@@ -21,7 +21,7 @@
     {
       "name": "Width",
       "key": "width",
-      "description": "Column width, or total width in container mode",
+      "description": "Column width, or total width in container mode (ignored by Fill parent)",
       "allowFreeform": true,
       "optional": true
     },
